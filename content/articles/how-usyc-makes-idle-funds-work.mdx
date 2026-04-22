@@ -1,0 +1,67 @@
+---
+title: "How USYC Makes Idle Funds Work"
+author: "Emma Zhang"
+authorAddress: "0x6789012345678901234567890123456789012345"
+readTime: "6 min"
+date: "2026-04-17"
+category: "Yield"
+excerpt: "Your stablecoins shouldn't sit idle. USYC provides institutional-grade T-bill yield, accessible on-chain."
+price: 0.001
+---
+
+## The Cost of Idle Capital
+
+Every dollar sitting in a stablecoin wallet is a dollar not earning yield. At 5% APR, $1,000 idle for a year costs you $50. Most DeFi users leave thousands of dollars idle in wallets between transactions — the cumulative opportunity cost is significant.
+
+USYC solves this by wrapping US Treasury bill yield in an ERC-20 token.
+
+## What is USYC?
+
+USYC (US Dollar Yield Coin) is issued by Hashnote, an institutional asset manager regulated by the Cayman Islands Monetary Authority. Each USYC token is backed by short-duration US Treasury bills — the safest yield-generating instrument in the world.
+
+The yield mechanism is simple: T-bills earn interest. That interest is reflected in the USYC NAV (net asset value), which ticks up continuously. When you redeem USYC for USDC, you get back more USDC than you put in.
+
+## The Numbers
+
+- **Expected yield**: ~5% APR (tracks current T-bill rates)
+- **Settlement**: T+0 (immediate redemption via Teller)
+- **Minimum**: No minimum deposit
+- **Eligibility**: Non-US persons (US users use USDC directly)
+
+At 5% APR:
+- $1 for 1 day = $0.000137 yield
+- $10 for 1 week = $0.0096 yield
+- $100 for 1 month = $0.41 yield
+
+## How HumbleHumansHub Uses USYC
+
+When you deposit USDC on HumbleHumansHub, here's what happens:
+
+1. **$0.01 stays as USDC float** — ready for instant reads without redemption latency
+2. **The rest auto-stakes into USYC** — earning yield while you browse
+3. **Each read atomically redeems $0.001 USYC → USDC** — via the Hashnote Teller
+4. **Writer earnings also auto-stake into USYC** — compounding until withdrawal
+
+The key insight: your reading balance is *always working*. You're never holding idle USDC — every dollar is earning T-bill yield between reads.
+
+## The Teller Contract
+
+The magic is in the Teller — a smart contract deployed by Hashnote that enables T+0 (same-block) USDC ↔ USYC conversion.
+
+Traditional USYC would require T+1 settlement (next business day). The Teller enables atomic redemption in the same transaction as the payment, making sub-cent yield-bearing payments possible.
+
+```solidity
+// Redeem USYC for USDC atomically
+function payForRead(address reader, string calldata slug) external {
+    uint256 usycNeeded = teller.usdcToUsyc(PRICE_PER_READ);
+    usycBalance[reader] -= usycNeeded;
+    uint256 usdcOut = teller.redeem(usycNeeded); // T+0, same tx
+    usdc.transfer(writerVault, PRICE_PER_READ);
+}
+```
+
+## Why This Matters
+
+HumbleHumansHub is one of the first applications to integrate USYC into a consumer-facing payment flow. Every reader and writer earns T-bill yield without doing anything — it's embedded in the payment infrastructure.
+
+At scale, this changes the economics of content creation. A writer with $1,000 in accumulated USYC earnings generates $50/year in passive yield on top of their read revenue. That's the beginning of a sustainable creator treasury.

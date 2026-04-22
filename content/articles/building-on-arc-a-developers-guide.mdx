@@ -1,0 +1,101 @@
+---
+title: "Building on Arc: A Developer's Guide"
+author: "Leo Park"
+authorAddress: "0x5678901234567890123456789012345678901234"
+readTime: "12 min"
+date: "2026-04-16"
+category: "Development"
+excerpt: "Arc's USDC-native gas model changes everything about dApp economics. Here's what developers need to know."
+price: 0.001
+---
+
+## What Makes Arc Different
+
+Every EVM chain uses its native token for gas. Ethereum uses ETH. Polygon uses MATIC. BNB Chain uses BNB. This creates a tax: before you can do anything on-chain, you need to acquire the chain's native token.
+
+Arc breaks this pattern. Gas on Arc is paid in USDC. This is not a trivial change — it fundamentally restructures what kinds of applications are economically viable.
+
+## The Gas Cost Comparison
+
+Let's run the numbers for a $0.001 micro-payment:
+
+| Chain | Gas Cost | Overhead |
+|-------|----------|----------|
+| Ethereum L1 | $0.50–$2.00 | 500–2000× |
+| Polygon | $0.001–$0.01 | 1–10× |
+| Arc | <$0.0001 | <10% |
+
+At 500–2000× overhead, Ethereum L1 micro-payments are economically impossible. At 10× overhead, Polygon is marginal. At <10%, Arc makes per-read pricing viable at scale.
+
+## Setting Up Your Development Environment
+
+```bash
+# Add Arc Testnet to your wagmi config
+import { defineChain } from "viem";
+
+export const arcTestnet = defineChain({
+  id: 5042002,
+  name: "Arc Testnet",
+  nativeCurrency: {
+    name: "USDC",
+    symbol: "USDC",
+    decimals: 6,
+  },
+  rpcUrls: {
+    default: {
+      http: ["https://rpc.testnet.arc.network"],
+    },
+  },
+});
+```
+
+## USDC as Gas: What This Means for UX
+
+Traditional Web3 UX is hostile to new users. "You need ETH to pay for gas to send USDC" is not a sentence a non-crypto person can parse. On Arc, you just need USDC. The mental model collapses to something users already understand: a dollar is a dollar.
+
+This has compounding effects on application design. When gas fees are denominated in stablecoins, you can:
+
+- Display exact costs to users upfront ("This will cost $0.001")
+- Predict transaction costs in your application logic
+- Design payment flows that don't require users to maintain gas reserves
+
+## Deploying Contracts
+
+```bash
+# Add Arc to hardhat.config.ts
+networks: {
+  arcTestnet: {
+    url: process.env.NEXT_PUBLIC_ARC_RPC_URL,
+    chainId: 5042002,
+    accounts: [process.env.DEPLOYER_PRIVATE_KEY],
+  }
+}
+
+# Deploy
+npx hardhat run scripts/deploy.ts --network arcTestnet
+```
+
+## The USYC Teller Integration
+
+The most powerful piece of the Arc ecosystem is the Hashnote USYC Teller. This contract enables T+0 atomic USDC ↔ USYC conversion.
+
+```solidity
+// Subscribe USDC → USYC
+uint256 usycMinted = teller.subscribe(usdcAmount);
+
+// Redeem USYC → USDC (T+0, atomic)
+uint256 usdcOut = teller.redeem(usycAmount);
+```
+
+This means your application can hold user funds in yield-bearing USYC automatically and redeem atomically at the moment of purchase. The user never manually stakes or unstakes — it happens transparently.
+
+## What to Build
+
+The combination of USDC gas, micro-payments, and yield-bearing stablecoins opens up an entire class of applications that weren't previously viable:
+
+- **Pay-per-use APIs** at $0.0001 per call
+- **Per-minute streaming payments** for video or audio
+- **Per-compute AI inference** pricing
+- **Micro-tipping** for social media content
+
+Arc is the infrastructure layer that makes the per-action economy possible. Build accordingly.
