@@ -1,7 +1,7 @@
 "use client";
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount } from "wagmi";
-import { contracts } from "@/lib/arc";
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId, useSwitchChain } from "wagmi";
+import { contracts, arcTestnet, ensureArcWalletChain, waitForArcWalletChain } from "@/lib/arc";
 
 const WRITER_VAULT_ABI = [
   {
@@ -27,9 +27,22 @@ const WRITER_VAULT_ABI = [
 
 export function useWriterVault() {
   const { address } = useAccount();
+  const chainId = useChainId();
+  const { switchChainAsync } = useSwitchChain();
   const vaultAddress = contracts.writerVault;
 
-  // ─── Read earnings ─────────────────────────────────────────────────────────
+  const isOnArc = chainId === arcTestnet.id;
+
+  async function switchToArc() {
+    try {
+      await switchChainAsync({ chainId: arcTestnet.id });
+    } catch {
+      await ensureArcWalletChain();
+    }
+    await waitForArcWalletChain();
+  }
+
+  // ─── Read earnings (always reads from Arc Testnet RPC) ────────────────────
   const { data: earnings, refetch: refetchEarnings } = useReadContract(
     vaultAddress && address
       ? {
@@ -37,6 +50,7 @@ export function useWriterVault() {
           abi: WRITER_VAULT_ABI,
           functionName: "earningsOf",
           args: [address],
+          chainId: arcTestnet.id,
         }
       : undefined
   );
@@ -46,40 +60,40 @@ export function useWriterVault() {
   const totalReads = earnings?.[2] ?? BigInt(0);
   const lifetimeUsdc = earnings?.[3] ?? BigInt(0);
 
-  // Mock values when contracts not deployed
-  const mock = {
-    usycBalance: BigInt(355800),   // 0.3558 USDC worth of USYC
-    estimatedUsdc: BigInt(356090), // +yield
-    totalReads: BigInt(347),
-    lifetimeUsdc: BigInt(347000),  // $0.347 USDC lifetime
-  };
-
   // ─── Withdraw ──────────────────────────────────────────────────────────────
-  const { writeContract: writeWithdraw, data: withdrawTxHash, isPending: isWithdrawing } = useWriteContract();
+  const { writeContractAsync: writeWithdraw, data: withdrawTxHash, isPending: isWithdrawing } = useWriteContract();
   const { isLoading: isWithdrawConfirming, isSuccess: isWithdrawSuccess } = useWaitForTransactionReceipt({
     hash: withdrawTxHash,
+    chainId: arcTestnet.id,
   });
 
-  function withdraw() {
-    if (!vaultAddress || !address) return;
-    writeWithdraw({
+  async function withdraw() {
+    if (!vaultAddress) throw new Error("WriterVault address not configured");
+    if (!address) throw new Error("Wallet not connected");
+    if (!isOnArc) await switchToArc();
+    await writeWithdraw({
+      account: address,
       address: vaultAddress,
       abi: WRITER_VAULT_ABI,
       functionName: "withdraw",
+      chainId: arcTestnet.id,
     });
   }
 
   return {
-    usycBalance: vaultAddress ? usycBalance : mock.usycBalance,
-    estimatedUsdc: vaultAddress ? estimatedUsdc : mock.estimatedUsdc,
-    totalReads: vaultAddress ? totalReads : mock.totalReads,
-    lifetimeUsdc: vaultAddress ? lifetimeUsdc : mock.lifetimeUsdc,
+    usycBalance,
+    estimatedUsdc,
+    totalReads,
+    lifetimeUsdc,
     refetchEarnings,
 
     withdraw,
     isWithdrawing: isWithdrawing || isWithdrawConfirming,
     isWithdrawSuccess,
 
+    // Chain state
+    isOnArc,
+    switchToArc,
     isContractDeployed: !!vaultAddress,
   };
 }

@@ -134,7 +134,7 @@ export async function getUsycBalance(address: `0x${string}`): Promise<bigint> {
  * Get USYC NAV (net asset value in USDC per USYC token).
  */
 export async function getUsycNav(): Promise<bigint> {
-  if (!contracts.usycToken) return BigInt(1e6); // 1 USDC fallback
+  if (!contracts.usycToken) return BigInt("1000000000000000000"); // 1 USDC fallback (18 decimals)
   const client = getPublicClient();
   return client.readContract({
     address: contracts.usycToken,

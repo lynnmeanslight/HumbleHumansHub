@@ -4,26 +4,27 @@
  * x402 is a web-native HTTP payment standard:
  * - Client requests /api/articles/[slug]
  * - Server responds 402 Payment Required with payment details
- * - Client makes micropayment, includes proof in retry request
- * - Server verifies proof, serves content
- *
- * Spec: https://x402.org
+ * - Client makes micropayment on-chain (ReaderVault.payForRead), includes tx hash in retry
+ * - Server verifies the tx succeeded on-chain and emitted ArticleRead for this slug
+ * - Server increments DB reads only after on-chain confirmation, then serves content
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { createPublicClient, http, decodeEventLog, parseAbiItem, type Hash } from "viem";
 import { contracts, PAYMENT } from "./arc";
+import { incrementReads } from "./db";
 
 export interface PaymentRequiredPayload {
   version: number;
   scheme: "exact";
   network: string;
-  maxAmountRequired: string; // in USDC atomic units
+  maxAmountRequired: string;
   resource: string;
   description: string;
   memoRequired: boolean;
-  payTo: string; // contract or address to pay
+  payTo: string;
   maxTimeoutSeconds: number;
-  asset: string; // USDC contract address
+  asset: string;
   extra?: Record<string, string>;
 }
 
@@ -32,7 +33,7 @@ export interface PaymentPayload {
   scheme: "exact";
   network: string;
   payload: {
-    signature: string;
+    signature: string; // confirmed on-chain tx hash
     authorization: {
       from: string;
       to: string;
@@ -45,6 +46,24 @@ export interface PaymentPayload {
 }
 
 const NETWORK = `arc-testnet-${process.env.NEXT_PUBLIC_ARC_CHAIN_ID || "5042002"}`;
+const ARC_CHAIN_ID = Number(process.env.NEXT_PUBLIC_ARC_CHAIN_ID || "5042002");
+const ARC_RPC = process.env.NEXT_PUBLIC_ARC_RPC_URL || "https://rpc.testnet.arc.network";
+
+// viem public client pointing at Arc — used server-side for receipt verification
+const arcClient = createPublicClient({
+  chain: {
+    id: ARC_CHAIN_ID,
+    name: "Arc Testnet",
+    nativeCurrency: { name: "USD Coin", symbol: "USDC", decimals: 18 },
+    rpcUrls: { default: { http: [ARC_RPC] } },
+  },
+  transport: http(ARC_RPC),
+});
+
+// ArticleRead(address indexed reader, address indexed writer, string slug, uint256 usdcPaid)
+const ARTICLE_READ_EVENT = parseAbiItem(
+  "event ArticleRead(address indexed reader, address indexed writer, string slug, uint256 usdcPaid)"
+);
 
 /**
  * Build a 402 Payment Required response for an article.
@@ -57,7 +76,7 @@ export function paymentRequired(
     version: 1,
     scheme: "exact",
     network: NETWORK,
-    maxAmountRequired: String(PAYMENT.PRICE_PER_READ), // 1000 = 0.001 USDC
+    maxAmountRequired: String(PAYMENT.PRICE_PER_READ),
     resource: `${process.env.NEXT_PUBLIC_APP_URL}/api/articles/${articleSlug}`,
     description: `Pay $0.001 USDC to read this article`,
     memoRequired: false,
@@ -80,13 +99,16 @@ export function paymentRequired(
 }
 
 /**
- * Verify a payment proof from the X-Payment header.
- * Returns true if payment is valid, false otherwise.
- *
- * TODO: Implement full x402 signature verification once Circle SDK is available.
- * Currently: validates presence of payment header and basic structure.
+ * Verify payment by checking the on-chain tx receipt.
+ * The tx must:
+ *   1. Exist and have status "success"
+ *   2. Contain an ArticleRead event emitted by ReaderVault
+ *   3. Have the ArticleRead.slug matching the expected article slug
  */
-export async function verifyPayment(request: NextRequest): Promise<{
+export async function verifyPayment(
+  request: NextRequest,
+  expectedSlug: string
+): Promise<{
   valid: boolean;
   payer?: string;
   txHash?: string;
@@ -109,25 +131,65 @@ export async function verifyPayment(request: NextRequest): Promise<{
     return { valid: false, error: "Unsupported x402 version" };
   }
 
-  if (!payment.payload?.authorization?.from) {
+  const txHash = payment.payload?.signature;
+  const payer  = payment.payload?.authorization?.from;
+
+  if (!txHash || !txHash.startsWith("0x") || txHash.length !== 66) {
+    return { valid: false, error: "Missing or invalid transaction hash" };
+  }
+  if (!payer) {
     return { valid: false, error: "Missing payer address" };
   }
 
-  // TODO: Verify EIP-3009 transferWithAuthorization signature
-  // TODO: Check authorization hasn't expired (validBefore)
-  // TODO: Verify payment amount matches PRICE_PER_READ
-  // TODO: Submit transaction to Arc via ReaderVault.payForRead()
+  // ── On-chain verification ────────────────────────────────────────────────
+  let receipt: Awaited<ReturnType<typeof arcClient.getTransactionReceipt>>;
+  try {
+    receipt = await arcClient.getTransactionReceipt({ hash: txHash as Hash });
+  } catch {
+    return { valid: false, error: "Transaction not found on-chain" };
+  }
 
-  return {
-    valid: true,
-    payer: payment.payload.authorization.from,
-    txHash: undefined, // Set after on-chain settlement
-  };
+  if (receipt.status !== "success") {
+    return { valid: false, error: "Transaction reverted" };
+  }
+
+  const readerVaultAddress = contracts.readerVault?.toLowerCase();
+  if (!readerVaultAddress) {
+    return { valid: false, error: "ReaderVault address not configured" };
+  }
+
+  // Find the ArticleRead event emitted by ReaderVault in this tx
+  let articleReadFound = false;
+  for (const log of receipt.logs) {
+    if (log.address.toLowerCase() !== readerVaultAddress) continue;
+    try {
+      const decoded = decodeEventLog({
+        abi: [ARTICLE_READ_EVENT],
+        data: log.data,
+        topics: log.topics,
+      });
+      if (decoded.eventName === "ArticleRead" && decoded.args.slug === expectedSlug) {
+        articleReadFound = true;
+        break;
+      }
+    } catch {
+      // Not this event — skip
+    }
+  }
+
+  if (!articleReadFound) {
+    return {
+      valid: false,
+      error: `No ArticleRead event for slug "${expectedSlug}" in tx ${txHash}`,
+    };
+  }
+
+  return { valid: true, payer, txHash };
 }
 
 /**
  * x402 middleware wrapper for Next.js API routes.
- * Usage: export const GET = withX402(handler, writerAddress);
+ * Verifies on-chain payment before incrementing DB reads and serving content.
  */
 export function withX402(
   handler: (req: NextRequest, verified: { payer: string }) => Promise<NextResponse>,
@@ -135,12 +197,16 @@ export function withX402(
   slug: string
 ) {
   return async (request: NextRequest): Promise<NextResponse> => {
-    const { valid, payer, error } = await verifyPayment(request);
+    const { valid, payer, error } = await verifyPayment(request, slug);
 
     if (!valid) {
-      // No valid payment — return 402
       return paymentRequired(slug, writerAddress);
     }
+
+    // On-chain tx confirmed and ArticleRead event verified — safe to record read
+    incrementReads(slug).catch(err =>
+      console.error("[x402] incrementReads failed:", err)
+    );
 
     return handler(request, { payer: payer! });
   };

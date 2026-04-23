@@ -1,23 +1,44 @@
 "use client";
 
+import { useAccount } from "wagmi";
+import { useWriterVault } from "@/hooks/useWriterVault";
+
 export function WriterEarnings() {
-  const reads = 347, earned = 0.347, yieldEarned = 0.0089;
-  const total = earned + yieldEarned;
+  const { isConnected } = useAccount();
+  const { estimatedUsdc, lifetimeUsdc, totalReads } = useWriterVault();
+
+  const earnedUsdc   = Number(lifetimeUsdc) / 1e18;
+  const pendingUsdc  = Number(estimatedUsdc) / 1e18;
+  const yieldEarned  = Math.max(0, pendingUsdc - earnedUsdc); // yield accrued on top of principal
+  const reads        = Number(totalReads);
+
+  if (!isConnected) {
+    return (
+      <div className="card p-5" id="writer-earnings">
+        <div className="text-label mb-3">Writer Earnings</div>
+        <p className="text-[13px] text-[#86868b]">Connect your wallet to see your earnings.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="card p-5" id="writer-earnings">
       <div className="flex items-center justify-between mb-4">
         <span className="text-label">Writer Earnings</span>
-        <span className="badge badge-positive text-[11px]">+2.5% yield</span>
+        {yieldEarned > 0 && (
+          <span className="badge badge-positive text-[11px]">+yield</span>
+        )}
       </div>
       <div className="mb-5">
-        <div className="text-[32px] font-bold tracking-tight text-[#1d1d1f]">${total.toFixed(4)}</div>
-        <div className="text-[13px] text-[#86868b] mt-1">From {reads.toLocaleString()} reads</div>
+        <div className="text-[32px] font-bold tracking-tight text-[#1d1d1f]">${pendingUsdc.toFixed(4)}</div>
+        <div className="text-[13px] text-[#86868b] mt-1">
+          {reads > 0 ? `From ${reads.toLocaleString()} read${reads !== 1 ? "s" : ""}` : "No reads yet"}
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-[#f5f5f7] rounded-lg p-4">
           <div className="text-label mb-2">Content</div>
-          <div className="text-[20px] font-semibold text-[#1d1d1f]">${earned.toFixed(3)}</div>
+          <div className="text-[20px] font-semibold text-[#1d1d1f]">${earnedUsdc.toFixed(3)}</div>
         </div>
         <div className="bg-[#f5f5f7] rounded-lg p-4">
           <div className="text-label mb-2">Yield</div>

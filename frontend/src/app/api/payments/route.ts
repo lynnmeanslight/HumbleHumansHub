@@ -5,7 +5,6 @@ import { NextRequest, NextResponse } from "next/server";
  * GET  /api/payments?intentId=&slug= — Verify payment
  *
  * In production: calls Circle Nanopayments API to batch micro-transactions.
- * In demo: creates signed mock intents that feed into x402 verification.
  */
 
 interface PaymentIntent {
@@ -84,15 +83,6 @@ export async function GET(request: NextRequest) {
   }
 
   // TODO: Poll Circle API for settlement status
-  // For demo: simulate instant settlement
-  if (intent.status === "pending") {
-    intent.status = "settled";
-    intent.txHash = `0x${Array.from({ length: 64 }, () =>
-      Math.floor(Math.random() * 16).toString(16)
-    ).join("")}`;
-    intents.set(intentId, intent);
-  }
-
   return NextResponse.json({
     intentId: intent.id,
     settled: intent.status === "settled",

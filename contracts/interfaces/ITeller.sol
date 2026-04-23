@@ -13,10 +13,9 @@ pragma solidity ^0.8.24;
 interface ITeller {
     /**
      * @notice Subscribe USDC to receive USYC.
-     * @param usdcAmount Amount of USDC (6 decimals) to stake
      * @return usycAmount Amount of USYC minted
      */
-    function subscribe(uint256 usdcAmount) external returns (uint256 usycAmount);
+    function subscribe() external payable returns (uint256 usycAmount);
 
     /**
      * @notice Redeem USYC for USDC.

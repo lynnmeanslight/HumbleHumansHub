@@ -26,21 +26,13 @@ const READER_VAULT_ABI = [
   {
     name: "deposit",
     type: "function",
-    inputs: [{ name: "amount", type: "uint256" }],
+    inputs: [],
     outputs: [],
-    stateMutability: "nonpayable",
+    stateMutability: "payable",
   },
 ] as const;
 
-const USDC_ABI = [
-  {
-    name: "approve",
-    type: "function",
-    inputs: [{ name: "spender", type: "address" }, { name: "amount", type: "uint256" }],
-    outputs: [{ name: "", type: "bool" }],
-    stateMutability: "nonpayable",
-  },
-] as const;
+
 
 const ARTICLES = [
   { slug: "why-micro-payments-will-replace-subscriptions", writer: "0x1234567890123456789012345678901234567890" as `0x${string}` },
@@ -56,10 +48,9 @@ const ARTICLES = [
 async function main() {
   const privateKey = process.env.DEPLOYER_PRIVATE_KEY as `0x${string}`;
   const readerVaultAddress = process.env.NEXT_PUBLIC_READER_VAULT_ADDRESS as `0x${string}`;
-  const usdcAddress = process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}`;
 
-  if (!privateKey || !readerVaultAddress || !usdcAddress) {
-    console.error("Missing env vars. Set: DEPLOYER_PRIVATE_KEY, NEXT_PUBLIC_READER_VAULT_ADDRESS, NEXT_PUBLIC_USDC_ADDRESS");
+  if (!privateKey || !readerVaultAddress) {
+    console.error("Missing env vars. Set: DEPLOYER_PRIVATE_KEY, NEXT_PUBLIC_READER_VAULT_ADDRESS");
     process.exit(1);
   }
 
@@ -81,30 +72,19 @@ async function main() {
   console.log(`   ReaderVault: ${readerVaultAddress}`);
   console.log(`   Target: 55 transactions\n`);
 
-  // Step 1: Approve USDC
-  console.log("1. Approving USDC...");
-  const approveTx = await walletClient.writeContract({
-    address: usdcAddress,
-    abi: USDC_ABI,
-    functionName: "approve",
-    args: [readerVaultAddress, parseUnits("1", 6)], // Approve 1 USDC
-  });
-  await publicClient.waitForTransactionReceipt({ hash: approveTx });
-  console.log(`   ✅ Approved | tx: ${approveTx}\n`);
-
-  // Step 2: Deposit 0.10 USDC
-  console.log("2. Depositing 0.10 USDC...");
+  // Step 1: Deposit 0.10 USDC
+  console.log("1. Depositing 0.10 USDC...");
   const depositTx = await walletClient.writeContract({
     address: readerVaultAddress,
     abi: READER_VAULT_ABI,
     functionName: "deposit",
-    args: [parseUnits("0.10", 6)],
+    value: parseUnits("0.10", 6),
   });
   await publicClient.waitForTransactionReceipt({ hash: depositTx });
   console.log(`   ✅ Deposited | tx: ${depositTx}\n`);
 
-  // Step 3: 50 article reads
-  console.log("3. Sending 50 payForRead transactions...\n");
+  // Step 2: 50 article reads
+  console.log("2. Sending 50 payForRead transactions...\n");
   const hashes: string[] = [];
 
   for (let i = 0; i < 50; i++) {
@@ -123,8 +103,8 @@ async function main() {
     await new Promise(r => setTimeout(r, 300));
   }
 
-  // Step 4: Wait for all receipts
-  console.log("\n4. Confirming all transactions...");
+  // Step 3: Wait for all receipts
+  console.log("\n3. Confirming all transactions...");
   let confirmed = 0;
   for (const hash of hashes) {
     await publicClient.waitForTransactionReceipt({ hash: hash as `0x${string}` });

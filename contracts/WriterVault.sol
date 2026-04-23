@@ -13,16 +13,8 @@ import "./interfaces/IUSYC.sol";
  *   2. WriterVault auto-stakes incoming USDC → USYC (yield-bearing)
  *   3. Writer can withdraw anytime: USYC → USDC via Teller (T+0)
  */
-interface IERC20 {
-    function transfer(address to, uint256 amount) external returns (bool);
-    function transferFrom(address from, address to, uint256 amount) external returns (bool);
-    function balanceOf(address account) external view returns (uint256);
-    function approve(address spender, uint256 amount) external returns (bool);
-}
-
 contract WriterVault {
     // ─── State ────────────────────────────────────────────────────────────────
-    IERC20  public immutable usdc;
     IUSYC   public immutable usycToken;
     ITeller public immutable teller;
     address public immutable owner;
@@ -44,8 +36,7 @@ contract WriterVault {
     error TransferFailed();
 
     // ─── Constructor ──────────────────────────────────────────────────────────
-    constructor(address _usdc, address _usycToken, address _teller) {
-        usdc      = IERC20(_usdc);
+    constructor(address _usycToken, address _teller) {
         usycToken = IUSYC(_usycToken);
         teller    = ITeller(_teller);
         owner     = msg.sender;
@@ -57,14 +48,13 @@ contract WriterVault {
      * @notice Receive USDC payment for a read and auto-stake to USYC.
      * @param writer Writer address to credit
      * @param slug   Article slug (for indexing)
-     * @param amount USDC amount (should be PRICE_PER_READ = 1000)
      */
-    function receivePayment(address writer, string calldata slug, uint256 amount) external {
-        if (!usdc.transferFrom(msg.sender, address(this), amount)) revert TransferFailed();
+    function receivePayment(address writer, string calldata slug) external payable {
+        uint256 amount = msg.value;
+        require(amount > 0, "Amount must be greater than 0");
 
-        // Auto-stake all USDC into USYC
-        usdc.approve(address(teller), amount);
-        uint256 usycMinted = teller.subscribe(amount);
+        // Auto-stake all native USDC into USYC
+        uint256 usycMinted = teller.subscribe{value: amount}();
 
         usycBalance[writer]     += usycMinted;
         totalUsdcEarned[writer] += amount;
@@ -85,7 +75,8 @@ contract WriterVault {
         usycBalance[msg.sender] = 0;
 
         uint256 usdcOut = teller.redeem(staked);
-        if (!usdc.transfer(msg.sender, usdcOut)) revert TransferFailed();
+        (bool success, ) = msg.sender.call{value: usdcOut}("");
+        if (!success) revert TransferFailed();
 
         emit EarningsWithdrawn(msg.sender, usdcOut);
     }
@@ -103,4 +94,6 @@ contract WriterVault {
         reads          = totalReads[writer];
         lifetimeUsdc   = totalUsdcEarned[writer];
     }
+
+    receive() external payable {}
 }

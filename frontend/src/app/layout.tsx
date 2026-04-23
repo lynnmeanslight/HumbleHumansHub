@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Web3Provider } from "@/providers/Web3Provider";
+import { OnboardingModal } from "@/components/OnboardingModal";
 
 export const metadata: Metadata = {
   title: "HumbleHumansHub — Pay $0.001 Per Read | Micro-Commerce on Arc",
@@ -25,7 +26,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Web3Provider>{children}</Web3Provider>
+        <Web3Provider>
+          <OnboardingModal />
+          {children}
+        </Web3Provider>
       </body>
     </html>
   );

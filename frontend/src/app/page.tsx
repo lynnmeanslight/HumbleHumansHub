@@ -15,7 +15,6 @@ export default function HomePage() {
             <div className="hidden md:flex items-center gap-5">
               <Link href="/read" className="text-[13px] text-[#6e6e73] hover:text-[#1d1d1f] transition-colors">Articles</Link>
               <Link href="/writer" className="text-[13px] text-[#6e6e73] hover:text-[#1d1d1f] transition-colors">Publish</Link>
-              <Link href="/wallet" className="text-[13px] text-[#6e6e73] hover:text-[#1d1d1f] transition-colors">Account</Link>
             </div>
           </div>
           <ConnectWallet />

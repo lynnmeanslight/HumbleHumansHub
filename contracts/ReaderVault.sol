@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "./interfaces/ITeller.sol";
 import "./interfaces/IUSYC.sol";
+import "./interfaces/IWriterVault.sol";
 
 /**
  * @title ReaderVault
@@ -14,20 +15,12 @@ import "./interfaces/IUSYC.sol";
  *   3. Remainder auto-stakes into USYC via Hashnote Teller (yield-bearing)
  *   4. On article read: redeem $0.001 USYC → USDC → WriterVault atomically
  */
-interface IERC20 {
-    function transfer(address to, uint256 amount) external returns (bool);
-    function transferFrom(address from, address to, uint256 amount) external returns (bool);
-    function balanceOf(address account) external view returns (uint256);
-    function approve(address spender, uint256 amount) external returns (bool);
-}
-
 contract ReaderVault {
     // ─── Constants ───────────────────────────────────────────────────────────
-    uint256 public constant PRICE_PER_READ = 1000;   // 0.001 USDC (6 decimals)
-    uint256 public constant FLOAT_AMOUNT   = 10_000; // 0.010 USDC float
+    uint256 public constant PRICE_PER_READ = 1_000_000_000_000_000;   // 0.001 USDC (18 decimals)
+    uint256 public constant FLOAT_AMOUNT   = 10_000_000_000_000_000; // 0.010 USDC float (18 decimals)
 
     // ─── State ────────────────────────────────────────────────────────────────
-    IERC20  public immutable usdc;
     IUSYC   public immutable usycToken;
     ITeller public immutable teller;
     address public immutable writerVault;
@@ -49,12 +42,10 @@ contract ReaderVault {
 
     // ─── Constructor ──────────────────────────────────────────────────────────
     constructor(
-        address _usdc,
         address _usycToken,
         address _teller,
         address _writerVault
     ) {
-        usdc        = IERC20(_usdc);
         usycToken   = IUSYC(_usycToken);
         teller      = ITeller(_teller);
         writerVault = _writerVault;
@@ -64,11 +55,11 @@ contract ReaderVault {
     // ─── Reader Actions ───────────────────────────────────────────────────────
 
     /**
-     * @notice Deposit USDC. Keeps FLOAT_AMOUNT as liquid USDC; stakes rest into USYC.
-     * @param amount USDC amount (6 decimals)
+     * @notice Deposit USDC (Native). Keeps FLOAT_AMOUNT as liquid USDC; stakes rest into USYC.
      */
-    function deposit(uint256 amount) external {
-        if (!usdc.transferFrom(msg.sender, address(this), amount)) revert TransferFailed();
+    function deposit() external payable {
+        uint256 amount = msg.value;
+        require(amount > 0, "Amount must be greater than 0");
 
         uint256 currentFloat = usdcFloat[msg.sender];
         uint256 needed = currentFloat >= FLOAT_AMOUNT ? 0 : FLOAT_AMOUNT - currentFloat;
@@ -79,8 +70,7 @@ contract ReaderVault {
 
         uint256 usycMinted = 0;
         if (toStake > 0) {
-            usdc.approve(address(teller), toStake);
-            usycMinted = teller.subscribe(toStake);
+            usycMinted = teller.subscribe{value: toStake}();
             usycStaked[msg.sender] += usycMinted;
         }
 
@@ -99,7 +89,7 @@ contract ReaderVault {
         if (float >= PRICE_PER_READ) {
             // Fast path: use USDC float
             usdcFloat[reader] -= PRICE_PER_READ;
-            if (!usdc.transfer(writerVault, PRICE_PER_READ)) revert TransferFailed();
+            IWriterVault(writerVault).receivePayment{value: PRICE_PER_READ}(writer, slug);
         } else {
             // Slow path: redeem USYC → USDC
             uint256 usycNeeded = teller.usdcToUsyc(PRICE_PER_READ);
@@ -109,7 +99,7 @@ contract ReaderVault {
             uint256 usdcOut = teller.redeem(usycNeeded);
 
             if (usdcOut < PRICE_PER_READ) revert InsufficientBalance();
-            if (!usdc.transfer(writerVault, PRICE_PER_READ)) revert TransferFailed();
+            IWriterVault(writerVault).receivePayment{value: PRICE_PER_READ}(writer, slug);
 
             // Refund any excess back to float
             if (usdcOut > PRICE_PER_READ) {
@@ -138,7 +128,8 @@ contract ReaderVault {
         }
 
         if (total == 0) revert InsufficientBalance();
-        if (!usdc.transfer(msg.sender, total)) revert TransferFailed();
+        (bool success, ) = msg.sender.call{value: total}("");
+        if (!success) revert TransferFailed();
 
         emit Withdrawn(msg.sender, total);
     }
@@ -154,4 +145,6 @@ contract ReaderVault {
         usycBalance      = usycStaked[reader];
         estimatedUsdcValue = usdcBalance + teller.usycToUsdc(usycBalance);
     }
+
+    receive() external payable {}
 }

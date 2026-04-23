@@ -1,51 +1,31 @@
 import { ConnectWallet } from "@/components/ConnectWallet";
 import { PaymentGate } from "@/components/PaymentGate";
 import { fetchArticle } from "@/lib/db";
-import { getArticle } from "@/lib/articles";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-function renderMarkdown(content: string) {
-  return content.split("\n").map((line, i) => {
-    if (line.startsWith("### ")) return <h3 key={i} className="text-[17px] font-semibold text-[#1d1d1f] mt-8 mb-2">{line.slice(4)}</h3>;
-    if (line.startsWith("## "))  return <h2 key={i} className="text-[22px] font-semibold text-[#1d1d1f] mt-10 mb-3">{line.slice(3)}</h2>;
-    if (line.startsWith("# "))   return <h1 key={i} className="text-[28px] font-bold text-[#1d1d1f] mt-10 mb-4">{line.slice(2)}</h1>;
-    if (line.startsWith("> "))   return (
-      <blockquote key={i} className="border-l-2 border-[#0071e3] pl-4 my-4 text-[15px] text-[#6e6e73] italic">{line.slice(2)}</blockquote>
-    );
-    if (line.startsWith("---"))  return <hr key={i} className="border-black/[0.08] my-6" />;
-    if (!line.trim())             return <div key={i} className="h-3" />;
-    const parts = line.split(/(\*\*[^*]+\*\*)/g).map((part, j) =>
-      part.startsWith("**") && part.endsWith("**")
-        ? <strong key={j} className="font-semibold text-[#1d1d1f]">{part.slice(2, -2)}</strong>
-        : part
-    );
-    return <p key={i} className="text-[16px] text-[#424245] leading-[1.8] mb-3">{parts}</p>;
-  });
-}
-
 export default async function ArticlePage({ params }: { params: { slug: string } }) {
   const { slug } = params;
 
-  // Try DB first (user-published), then local MDX (seeded)
+  // Fetch metadata only — content is never sent to the client before payment.
   let article: {
     title: string; author: string; author_address?: string; authorAddress?: string;
     category: string; excerpt: string; read_time?: string; readTime?: string;
-    date?: string; created_at?: string; content: string; price: number;
+    date?: string; created_at?: string; price: number;
   } | null = null;
 
   try {
     const db = await fetchArticle(slug);
-    if (db) article = db;
+    if (db) {
+      // Destructure content out so it is never included in the rendered HTML.
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { content: _content, ...meta } = db;
+      article = meta;
+    }
   } catch {
-    // Supabase not configured yet
-  }
-
-  if (!article) {
-    const local = getArticle(slug);
-    if (local) article = local;
+    // DB not configured yet
   }
 
   if (!article) notFound();
@@ -55,6 +35,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
   const readTime = article.read_time ?? article.readTime ?? "5 min";
   const date = article.created_at?.split("T")[0] ?? article.date ?? "";
   const price = article.price ?? 0.001;
+  const writerAddress = (article.author_address ?? article.authorAddress ?? "0x0000000000000000000000000000000000000000") as `0x${string}`;
 
   return (
     <div className="min-h-screen bg-white">
@@ -82,9 +63,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
 
       <section className="section-elevated">
         <div className="max-w-[680px] mx-auto px-6 py-10 md:py-14">
-          <PaymentGate articleTitle={article.title}>
-            <article>{renderMarkdown(article.content)}</article>
-          </PaymentGate>
+          <PaymentGate articleTitle={article.title} authorName={author} slug={slug} writerAddress={writerAddress} />
           <div className="mt-10 h-px bg-black/[0.06]" />
           <div className="mt-4 flex items-center gap-2.5">
             <span className="text-[13px] text-[#1a8917] font-medium">✓ Settled</span>

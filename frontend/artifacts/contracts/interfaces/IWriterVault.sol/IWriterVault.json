@@ -1,0 +1,29 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "IWriterVault",
+  "sourceName": "contracts/interfaces/IWriterVault.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "writer",
+          "type": "address"
+        },
+        {
+          "internalType": "string",
+          "name": "slug",
+          "type": "string"
+        }
+      ],
+      "name": "receivePayment",
+      "outputs": [],
+      "stateMutability": "payable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

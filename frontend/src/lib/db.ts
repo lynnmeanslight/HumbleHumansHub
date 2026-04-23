@@ -117,3 +117,100 @@ export async function incrementReads(slug: string): Promise<void> {
     }
   });
 }
+
+// ─── User helpers ─────────────────────────────────────────────────────────────
+
+export interface DbUser {
+  id: string;
+  address: string;
+  username: string | null;
+  displayName: string | null;
+  bio: string | null;
+  avatarUrl: string | null;
+  createdAt: string;
+}
+
+/** Get user profile by wallet address (case-insensitive). Returns null if not found. */
+export async function fetchUserByAddress(address: string): Promise<DbUser | null> {
+  const data = await prisma.user.findFirst({
+    where: { address: { equals: address.toLowerCase() } },
+  });
+  if (!data) return null;
+  return {
+    id: data.id,
+    address: data.address,
+    username: data.username,
+    displayName: data.displayName,
+    bio: data.bio,
+    avatarUrl: data.avatarUrl,
+    createdAt: data.createdAt.toISOString(),
+  };
+}
+
+/** Upsert user profile. Creates with displayName="Anonymous" if first time. */
+export async function upsertUser(
+  address: string,
+  updates: { displayName?: string; username?: string; bio?: string; avatarUrl?: string }
+): Promise<DbUser> {
+  const normalized = address.toLowerCase();
+  const data = await prisma.user.upsert({
+    where: { address: normalized },
+    create: {
+      address: normalized,
+      displayName: updates.displayName ?? "Anonymous",
+      username: updates.username ?? null,
+      bio: updates.bio ?? null,
+      avatarUrl: updates.avatarUrl ?? null,
+    },
+    update: {
+      ...(updates.displayName !== undefined && { displayName: updates.displayName }),
+      ...(updates.username !== undefined && { username: updates.username }),
+      ...(updates.bio !== undefined && { bio: updates.bio }),
+      ...(updates.avatarUrl !== undefined && { avatarUrl: updates.avatarUrl }),
+    },
+  });
+  return {
+    id: data.id,
+    address: data.address,
+    username: data.username,
+    displayName: data.displayName,
+    bio: data.bio,
+    avatarUrl: data.avatarUrl,
+    createdAt: data.createdAt.toISOString(),
+  };
+}
+
+/** Fetch all articles by a specific author wallet address */
+export async function fetchArticlesByAuthor(authorAddress: string): Promise<Omit<DbArticle, "content">[]> {
+  const data = await prisma.article.findMany({
+    where: { authorAddress: { equals: authorAddress, mode: "insensitive" } },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      author: true,
+      authorAddress: true,
+      category: true,
+      excerpt: true,
+      readTime: true,
+      price: true,
+      reads: true,
+      createdAt: true
+    },
+    orderBy: { createdAt: "desc" }
+  });
+
+  return data.map(item => ({
+    id: item.id,
+    slug: item.slug,
+    title: item.title,
+    author: item.author,
+    author_address: item.authorAddress,
+    category: item.category,
+    excerpt: item.excerpt,
+    read_time: item.readTime,
+    price: Number(item.price),
+    reads: item.reads,
+    created_at: item.createdAt.toISOString()
+  }));
+}
