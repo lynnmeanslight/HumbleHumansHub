@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/lynn/Desktop/humblehumanshub/contracts/ReaderVault.sol": {
-      "lastModificationDate": 1777109016082,
-      "contentHash": "52fd4151353f659960657ef4b2476df5",
+      "lastModificationDate": 1777128579406,
+      "contentHash": "6a1cb98c41d04ba37c4edf1662e12cde",
       "sourceName": "contracts/ReaderVault.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -115,8 +115,8 @@
       ]
     },
     "/Users/lynn/Desktop/humblehumanshub/contracts/interfaces/IWriterVault.sol": {
-      "lastModificationDate": 1776977178672,
-      "contentHash": "05af95a5b099d0e041c9558da85d447c",
+      "lastModificationDate": 1777127387389,
+      "contentHash": "0eba992fb7b71d8f0ce83416c729f7a5",
       "sourceName": "contracts/interfaces/IWriterVault.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -151,8 +151,8 @@
       ]
     },
     "/Users/lynn/Desktop/humblehumanshub/contracts/WriterVault.sol": {
-      "lastModificationDate": 1777109024482,
-      "contentHash": "e0f8e651e2f98b683f016184ccb52b05",
+      "lastModificationDate": 1777127400441,
+      "contentHash": "e6be7397e8e07cdc02e7788af25fe638",
       "sourceName": "contracts/WriterVault.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -180,7 +180,8 @@
       },
       "imports": [
         "./interfaces/ITeller.sol",
-        "./interfaces/IUSYC.sol"
+        "./interfaces/IUSYC.sol",
+        "./interfaces/IWriterVault.sol"
       ],
       "versionPragmas": [
         "^0.8.24"

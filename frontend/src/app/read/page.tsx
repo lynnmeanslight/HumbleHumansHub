@@ -30,7 +30,10 @@ export default async function ReadPage() {
       <nav className="fixed top-0 w-full z-50 nav-glass">
         <div className="max-w-content mx-auto px-6 h-12 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href="/" className="text-[15px] font-bold text-[#1d1d1f] tracking-tight">HumbleHumansHub</Link>
+            <Link href="/" className="flex items-center gap-2 text-[15px] font-bold text-[#1d1d1f] tracking-tight">
+              <img src="/logo.png" alt="Logo" className="h-6 w-auto object-contain" />
+              HumbleHumansHub
+            </Link>
             <div className="hidden md:flex items-center gap-5">
               <Link href="/read" className="text-[13px] text-[#1d1d1f] font-medium">Articles</Link>
               <Link href="/writer" className="text-[13px] text-[#6e6e73] hover:text-[#1d1d1f] transition-colors">Publish</Link>

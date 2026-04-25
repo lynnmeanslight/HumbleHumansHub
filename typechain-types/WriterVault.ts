@@ -30,6 +30,7 @@ export interface WriterVaultInterface extends Interface {
       | "owner"
       | "receivePayment"
       | "teller"
+      | "totalAgentSearches"
       | "totalClaps"
       | "totalComments"
       | "totalReads"
@@ -53,6 +54,10 @@ export interface WriterVaultInterface extends Interface {
     values: [AddressLike, string, BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "teller", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "totalAgentSearches",
+    values: [AddressLike]
+  ): string;
   encodeFunctionData(
     functionFragment: "totalClaps",
     values: [AddressLike]
@@ -83,6 +88,10 @@ export interface WriterVaultInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "teller", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "totalAgentSearches",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "totalClaps", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "totalComments",
@@ -188,12 +197,13 @@ export interface WriterVault extends BaseContract {
   earningsOf: TypedContractMethod<
     [writer: AddressLike],
     [
-      [bigint, bigint, bigint, bigint, bigint, bigint] & {
+      [bigint, bigint, bigint, bigint, bigint, bigint, bigint] & {
         usyc: bigint;
         estimatedUsdc: bigint;
         reads: bigint;
         claps: bigint;
         comments: bigint;
+        agentSearches: bigint;
         lifetimeUsdc: bigint;
       }
     ],
@@ -209,6 +219,12 @@ export interface WriterVault extends BaseContract {
   >;
 
   teller: TypedContractMethod<[], [string], "view">;
+
+  totalAgentSearches: TypedContractMethod<
+    [arg0: AddressLike],
+    [bigint],
+    "view"
+  >;
 
   totalClaps: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
 
@@ -233,12 +249,13 @@ export interface WriterVault extends BaseContract {
   ): TypedContractMethod<
     [writer: AddressLike],
     [
-      [bigint, bigint, bigint, bigint, bigint, bigint] & {
+      [bigint, bigint, bigint, bigint, bigint, bigint, bigint] & {
         usyc: bigint;
         estimatedUsdc: bigint;
         reads: bigint;
         claps: bigint;
         comments: bigint;
+        agentSearches: bigint;
         lifetimeUsdc: bigint;
       }
     ],
@@ -257,6 +274,9 @@ export interface WriterVault extends BaseContract {
   getFunction(
     nameOrSignature: "teller"
   ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "totalAgentSearches"
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
   getFunction(
     nameOrSignature: "totalClaps"
   ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;

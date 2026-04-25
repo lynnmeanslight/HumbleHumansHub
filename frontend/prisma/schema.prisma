@@ -8,39 +8,50 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid()) @db.Uuid
-  address       String   @unique                         // wallet address (lowercased)
-  username      String?  @unique
-  displayName   String?  @map("display_name")
-  bio           String?
-  avatarUrl     String?  @map("avatar_url")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  articles      Article[]
+  id          String    @id @default(uuid()) @db.Uuid
+  address     String    @unique
+  username    String?   @unique
+  displayName String?   @map("display_name")
+  bio         String?
+  avatarUrl   String?   @map("avatar_url")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  articles    Article[]
 
   @@map("users")
 }
 
 model Article {
-  id            String   @id @default(uuid()) @db.Uuid
-  slug          String   @unique
+  id            String    @id @default(uuid()) @db.Uuid
+  slug          String    @unique
   title         String
-  author        String   @default("Anonymous")
-  authorAddress String   @default("0x0000000000000000000000000000000000000000") @map("author_address")
-  category      String   @default("General")
-  excerpt       String   @default("")
-  readTime      String   @default("5 min") @map("read_time")
+  author        String    @default("Anonymous")
+  authorAddress String    @default("0x0000000000000000000000000000000000000000") @map("author_address")
+  category      String    @default("General")
+  excerpt       String    @default("")
+  readTime      String    @default("5 min") @map("read_time")
   content       String
-  price         Decimal  @default(0.001) @db.Decimal(10, 4)
-  reads         Int      @default(0)
-  createdAt     DateTime @default(now()) @map("created_at")
-
-  // Optional relation — populated when user creates a profile
-  userId        String?  @map("user_id") @db.Uuid
-  user          User?    @relation(fields: [userId], references: [id])
+  price         Decimal   @default(0.001) @db.Decimal(10, 4)
+  reads         Int       @default(0)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  userId        String?   @map("user_id") @db.Uuid
+  user          User?     @relation(fields: [userId], references: [id])
+  comments      Comment[]
 
   @@map("articles")
+}
+
+model Comment {
+  id          String   @id @default(uuid()) @db.Uuid
+  content     String
+  author      String   @default("Anonymous")
+  authorAddr  String   @map("author_address")
+  articleSlug String   @map("article_slug")
+  txHash      String?  @unique @map("tx_hash")
+  createdAt   DateTime @default(now()) @map("created_at")
+  article     Article  @relation(fields: [articleSlug], references: [slug])
+
+  @@map("comments")
 }
 
 model ArticleReadEvent {
@@ -52,7 +63,7 @@ model ArticleReadEvent {
   writerAddress String   @map("writer_address")
   articleSlug   String   @map("article_slug")
   amount        Decimal  @db.Decimal(20, 18)
-  eventType     String   @default("READ") @map("event_type") // READ, CLAP, COMMENT
+  eventType     String   @default("READ") @map("event_type")
   observedAt    DateTime @map("observed_at")
   createdAt     DateTime @default(now()) @map("created_at")
 

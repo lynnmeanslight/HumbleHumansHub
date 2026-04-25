@@ -32,6 +32,7 @@ export interface ReaderVaultInterface extends Interface {
       | "balanceOf"
       | "deposit"
       | "owner"
+      | "payForAgentSearch"
       | "payForClap"
       | "payForComment"
       | "payForRead"
@@ -48,6 +49,7 @@ export interface ReaderVaultInterface extends Interface {
 
   getEvent(
     nameOrSignatureOrTopic:
+      | "AgentSearchPaid"
       | "ArticleRead"
       | "ClapPaid"
       | "CommentPaid"
@@ -73,6 +75,10 @@ export interface ReaderVaultInterface extends Interface {
   ): string;
   encodeFunctionData(functionFragment: "deposit", values?: undefined): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "payForAgentSearch",
+    values: [AddressLike, AddressLike[], string[], BigNumberish[], BigNumberish]
+  ): string;
   encodeFunctionData(
     functionFragment: "payForClap",
     values: [AddressLike, AddressLike, string]
@@ -125,6 +131,10 @@ export interface ReaderVaultInterface extends Interface {
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "deposit", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "payForAgentSearch",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "payForClap", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "payForComment",
@@ -152,6 +162,28 @@ export interface ReaderVaultInterface extends Interface {
     functionFragment: "writerVault",
     data: BytesLike
   ): Result;
+}
+
+export namespace AgentSearchPaidEvent {
+  export type InputTuple = [
+    reader: AddressLike,
+    totalFee: BigNumberish,
+    platformFee: BigNumberish
+  ];
+  export type OutputTuple = [
+    reader: string,
+    totalFee: bigint,
+    platformFee: bigint
+  ];
+  export interface OutputObject {
+    reader: string;
+    totalFee: bigint;
+    platformFee: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
 }
 
 export namespace ArticleReadEvent {
@@ -342,6 +374,18 @@ export interface ReaderVault extends BaseContract {
 
   owner: TypedContractMethod<[], [string], "view">;
 
+  payForAgentSearch: TypedContractMethod<
+    [
+      reader: AddressLike,
+      writers: AddressLike[],
+      slugs: string[],
+      authorShares: BigNumberish[],
+      totalPrice: BigNumberish
+    ],
+    [void],
+    "nonpayable"
+  >;
+
   payForClap: TypedContractMethod<
     [reader: AddressLike, writer: AddressLike, slug: string],
     [void],
@@ -440,6 +484,19 @@ export interface ReaderVault extends BaseContract {
     nameOrSignature: "owner"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
+    nameOrSignature: "payForAgentSearch"
+  ): TypedContractMethod<
+    [
+      reader: AddressLike,
+      writers: AddressLike[],
+      slugs: string[],
+      authorShares: BigNumberish[],
+      totalPrice: BigNumberish
+    ],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
     nameOrSignature: "payForClap"
   ): TypedContractMethod<
     [reader: AddressLike, writer: AddressLike, slug: string],
@@ -500,6 +557,13 @@ export interface ReaderVault extends BaseContract {
   ): TypedContractMethod<[], [string], "view">;
 
   getEvent(
+    key: "AgentSearchPaid"
+  ): TypedContractEvent<
+    AgentSearchPaidEvent.InputTuple,
+    AgentSearchPaidEvent.OutputTuple,
+    AgentSearchPaidEvent.OutputObject
+  >;
+  getEvent(
     key: "ArticleRead"
   ): TypedContractEvent<
     ArticleReadEvent.InputTuple,
@@ -536,6 +600,17 @@ export interface ReaderVault extends BaseContract {
   >;
 
   filters: {
+    "AgentSearchPaid(address,uint256,uint256)": TypedContractEvent<
+      AgentSearchPaidEvent.InputTuple,
+      AgentSearchPaidEvent.OutputTuple,
+      AgentSearchPaidEvent.OutputObject
+    >;
+    AgentSearchPaid: TypedContractEvent<
+      AgentSearchPaidEvent.InputTuple,
+      AgentSearchPaidEvent.OutputTuple,
+      AgentSearchPaidEvent.OutputObject
+    >;
+
     "ArticleRead(address,address,string,uint256)": TypedContractEvent<
       ArticleReadEvent.InputTuple,
       ArticleReadEvent.OutputTuple,

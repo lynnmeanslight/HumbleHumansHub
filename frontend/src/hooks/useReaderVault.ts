@@ -58,6 +58,19 @@ const READER_VAULT_ABI = [
     stateMutability: "nonpayable",
   },
   {
+    name: "payForAgentSearch",
+    type: "function",
+    inputs: [
+      { name: "reader", type: "address" },
+      { name: "writers", type: "address[]" },
+      { name: "slugs", type: "string[]" },
+      { name: "authorShares", type: "uint256[]" },
+      { name: "totalPrice", type: "uint256" }
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
     name: "balanceOf",
     type: "function",
     inputs: [{ name: "reader", type: "address" }],
@@ -282,6 +295,33 @@ export function useReaderVault() {
     }
   }
 
+  // ─── Pay for agent search ──────────────────────────────────────────────────
+  const { writeContractAsync: writePayForAgentSearch, isPending: isAgentSearchSubmitting } = useWriteContract();
+  async function payForAgentSearch(writers: `0x${string}`[], slugs: string[], authorShares: bigint[], totalPrice: bigint) {
+    if (!vaultAddress) throw new Error("ReaderVault address not configured");
+    if (!address) throw new Error("Wallet not connected");
+    if (!isOnArc) await switchToArcAsync();
+
+    for (let attempt = 1; attempt <= TXPOOL_RETRY_ATTEMPTS; attempt += 1) {
+      try {
+        const txHash = await writePayForAgentSearch({
+          account: address,
+          address: vaultAddress,
+          abi: READER_VAULT_ABI,
+          functionName: "payForAgentSearch",
+          args: [address, writers, slugs, authorShares, totalPrice],
+          chainId: arcTestnet.id,
+        });
+        return txHash;
+      } catch (error) {
+        if (!isTxpoolFullError(error) || attempt === TXPOOL_RETRY_ATTEMPTS) {
+          throw toFriendlyWriteError(error);
+        }
+        await sleep(TXPOOL_RETRY_DELAY_MS * attempt);
+      }
+    }
+  }
+
   // ─── Withdraw ──────────────────────────────────────────────────────────────
   const { writeContractAsync: writeWithdraw, data: withdrawTxHash, isPending: isWithdrawing } = useWriteContract();
   const { isLoading: isWithdrawConfirming, isSuccess: isWithdrawSuccess } = useWaitForTransactionReceipt({
@@ -333,6 +373,9 @@ export function useReaderVault() {
 
     payForClap,
     isClapSubmitting,
+
+    payForAgentSearch,
+    isAgentSearchSubmitting,
 
     withdraw,
     isWithdrawing: isWithdrawing || isWithdrawConfirming,

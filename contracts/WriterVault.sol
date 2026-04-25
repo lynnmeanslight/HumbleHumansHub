@@ -25,6 +25,8 @@ contract WriterVault {
     mapping(address => uint256) public totalClaps;
     /// Writer address → total comments count
     mapping(address => uint256) public totalComments;
+    /// Writer address → total agent searches included in
+    mapping(address => uint256) public totalAgentSearches;
 
     // ─── Events ───────────────────────────────────────────────────────────────
     event EarningsReceived(address indexed writer, uint256 usdcAmount, uint256 usycMinted, string slug, IWriterVault.PaymentType pType);
@@ -48,7 +50,7 @@ contract WriterVault {
      * @notice Receive USDC payment for a read and auto-stake to USYC.
      * @param writer Writer address to credit
      * @param slug   Article slug (for indexing)
-     * @param pType  Type of payment (Read, Clap, Comment)
+     * @param pType  Type of payment (Read, Clap, Comment, AgentSearch)
      */
     function receivePayment(address writer, string calldata slug, IWriterVault.PaymentType pType) external payable {
         uint256 amount = msg.value;
@@ -67,6 +69,8 @@ contract WriterVault {
             totalClaps[writer] += 1;
         } else if (pType == IWriterVault.PaymentType.Comment) {
             totalComments[writer] += 1;
+        } else if (pType == IWriterVault.PaymentType.AgentSearch) {
+            totalAgentSearches[writer] += 1;
         }
 
         emit EarningsReceived(writer, amount, usycMinted, slug, pType);
@@ -98,6 +102,7 @@ contract WriterVault {
         uint256 reads,
         uint256 claps,
         uint256 comments,
+        uint256 agentSearches,
         uint256 lifetimeUsdc
     ) {
         usyc           = usycBalance[writer];
@@ -105,6 +110,7 @@ contract WriterVault {
         reads          = totalReads[writer];
         claps          = totalClaps[writer];
         comments       = totalComments[writer];
+        agentSearches  = totalAgentSearches[writer];
         lifetimeUsdc   = totalUsdcEarned[writer];
     }
 

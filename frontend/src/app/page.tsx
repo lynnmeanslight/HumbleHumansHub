@@ -2,7 +2,9 @@
 
 import { ConnectWallet } from "@/components/ConnectWallet";
 import { LiveFeedTicker } from "@/components/LiveFeedTicker";
+import { AgentChat } from "@/components/AgentChat";
 import Link from "next/link";
+
 
 export default function HomePage() {
   return (
@@ -11,7 +13,10 @@ export default function HomePage() {
       <nav className="fixed top-0 w-full z-50 nav-glass">
         <div className="max-w-content mx-auto px-6 h-12 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <Link href="/" className="text-[15px] font-bold text-[#1d1d1f] tracking-tight">HumbleHumansHub</Link>
+            <Link href="/" className="flex items-center gap-2 text-[15px] font-bold text-[#1d1d1f] tracking-tight">
+              <img src="/logo.png" alt="Logo" className="h-6 w-auto object-contain" />
+              HumbleHumansHub
+            </Link>
             <div className="hidden md:flex items-center gap-5">
               <Link href="/read" className="text-[13px] text-[#6e6e73] hover:text-[#1d1d1f] transition-colors">Articles</Link>
               <Link href="/writer" className="text-[13px] text-[#6e6e73] hover:text-[#1d1d1f] transition-colors">Publish</Link>
@@ -23,7 +28,7 @@ export default function HomePage() {
 
       {/* Hero */}
       <section className="pt-12">
-        <div className="max-w-content mx-auto px-6 pt-24 pb-20 md:pt-36 md:pb-28 text-center">
+        <div className="max-w-content mx-auto px-6 pt-24 pb-16 md:pt-36 md:pb-20 text-center">
           <div className="badge badge-accent mb-6 inline-flex">
             <span className="live-dot" />
             Live payments
@@ -37,9 +42,19 @@ export default function HomePage() {
             Add a small balance, unlock articles instantly, and keep reading without subscriptions.
             Writers get paid every time someone opens their work.
           </p>
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center justify-center gap-3 mb-16 md:mb-20">
             <Link href="/read" className="btn-primary px-7 py-3">Explore Articles</Link>
             <Link href="/writer" className="btn-secondary px-7 py-3">For Creators ›</Link>
+          </div>
+          
+          {/* Banner Graphic */}
+          <div className="mx-auto max-w-4xl rounded-2xl overflow-hidden shadow-2xl border border-black/[0.06] bg-[#f5f5f7]">
+            <img src="/banner.png" alt="HumbleHumansHub Banner" className="w-full h-auto object-cover" />
+          </div>
+
+          {/* Gemini Agent Chat */}
+          <div className="mt-8">
+            <AgentChat />
           </div>
         </div>
       </section>

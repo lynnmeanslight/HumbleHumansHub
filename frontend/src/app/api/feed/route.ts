@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { createPublicClient, formatUnits, http, parseAbiItem } from "viem";
 import { contracts } from "@/lib/arc";
-import { fetchArticle, prisma } from "@/lib/db";
+import { fetchArticle, fetchRecentArticleReadEvents, prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +23,9 @@ const COMMENT_PAID_EVENT = parseAbiItem(
 );
 const CLAP_PAID_EVENT = parseAbiItem(
   "event ClapPaid(address indexed reader, address indexed writer, string slug, uint256 usdcPaid)"
+);
+const AGENT_SEARCH_PAID_EVENT = parseAbiItem(
+  "event AgentSearchPaid(address indexed reader, uint256 totalFee, uint256 platformFee)"
 );
 
 const arcClient = createPublicClient({
@@ -148,8 +151,35 @@ async function streamRpcFeed(
   let lastProcessedBlock = BigInt(0);
   const blockTimestampCache = new Map<bigint, number>();
 
+  // 1. Instantly send recent events from the database
+  try {
+    const recentDbEvents = await fetchRecentArticleReadEvents(50);
+    const reversed = [...recentDbEvents].reverse(); // oldest first so newest is at the top of the feed array
+    for (const event of reversed) {
+      if (isClosed()) return;
+      const article = await fetchArticle(event.article_slug);
+      
+      enqueueSse({
+        id: event.id,
+        reader: shortenAddress(event.reader),
+        article: article?.title ?? event.article_slug,
+        slug: event.article_slug,
+        writer: article?.author ?? shortenAddress(event.writer_address),
+        amount: event.amount,
+        eventType: event.eventType || "READ",
+        txHash: event.tx_hash,
+        blockNumber: Number(event.block_number),
+        timestamp: new Date(event.observed_at).getTime(),
+        ageMs: Math.max(0, Date.now() - new Date(event.observed_at).getTime()),
+      });
+    }
+  } catch (err) {
+    console.error("Failed to load DB events for feed:", err);
+  }
+
+  // 2. Poll RPC for new events
   const latestBlock = await arcClient.getBlockNumber();
-  lastProcessedBlock = latestBlock > REPLAY_BLOCKS ? latestBlock - REPLAY_BLOCKS : BigInt(0);
+  lastProcessedBlock = latestBlock; // start polling from current block
 
   while (!isClosed()) {
     const chainTip = await arcClient.getBlockNumber();
@@ -158,7 +188,7 @@ async function streamRpcFeed(
     if (chainTip >= fromBlock) {
       const logs = await arcClient.getLogs({
         address: readerVaultAddress,
-        events: [ARTICLE_READ_EVENT, COMMENT_PAID_EVENT, CLAP_PAID_EVENT],
+        events: [ARTICLE_READ_EVENT, COMMENT_PAID_EVENT, CLAP_PAID_EVENT, AGENT_SEARCH_PAID_EVENT],
         fromBlock,
         toBlock: chainTip,
       });
@@ -173,14 +203,35 @@ async function streamRpcFeed(
           blockTimestampCache.set(log.blockNumber, timestamp);
         }
 
-        if (!log.args.slug || !log.args.usdcPaid || !log.args.reader || !log.args.writer) continue;
-
-        const article = await fetchArticle(log.args.slug);
-        const amount = Number(formatUnits(log.args.usdcPaid, 18));
-
+        let amount = 0;
         let eventType = "READ";
-        if (log.eventName === "CommentPaid") eventType = "COMMENT";
-        if (log.eventName === "ClapPaid") eventType = "CLAP";
+        let reader = "";
+        let writer = "";
+        let slug = "";
+        let articleTitle = "";
+
+        if (log.eventName === "AgentSearchPaid") {
+            const args = log.args as any;
+            if (!args.reader || !args.totalFee) continue;
+            reader = args.reader;
+            amount = Number(formatUnits(args.totalFee, 18));
+            eventType = "AGENT_SEARCH";
+            writer = "Platform"; // Agent searches benefit multiple writers and platform
+            slug = "agent-search";
+            articleTitle = "AI Research Query";
+        } else {
+            const args = log.args as any;
+            if (!args.slug || !args.usdcPaid || !args.reader || !args.writer) continue;
+            const article = await fetchArticle(args.slug);
+            amount = Number(formatUnits(args.usdcPaid, 18));
+            reader = args.reader;
+            writer = article?.author ?? shortenAddress(args.writer);
+            slug = args.slug;
+            articleTitle = article?.title ?? args.slug;
+
+            if (log.eventName === "CommentPaid") eventType = "COMMENT";
+            if (log.eventName === "ClapPaid") eventType = "CLAP";
+        }
 
         const eventId = `${log.transactionHash}-${log.logIndex?.toString() ?? "0"}`;
 
@@ -191,9 +242,9 @@ async function streamRpcFeed(
             txHash: log.transactionHash,
             logIndex: Number(log.logIndex ?? 0),
             blockNumber: BigInt(log.blockNumber),
-            reader: log.args.reader,
-            writerAddress: log.args.writer,
-            articleSlug: log.args.slug,
+            reader: reader,
+            writerAddress: writer,
+            articleSlug: slug,
             amount: amount,
             eventType: eventType,
             observedAt: new Date(timestamp),
@@ -203,10 +254,10 @@ async function streamRpcFeed(
 
         enqueueSse({
           id: eventId,
-          reader: shortenAddress(log.args.reader),
-          article: article?.title ?? log.args.slug,
-          slug: log.args.slug,
-          writer: article?.author ?? shortenAddress(log.args.writer),
+          reader: shortenAddress(reader),
+          article: articleTitle,
+          slug: slug,
+          writer: writer,
           amount,
           eventType,
           txHash: log.transactionHash,

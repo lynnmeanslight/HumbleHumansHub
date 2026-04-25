@@ -35,11 +35,13 @@ contract ReaderVault {
     event ArticleRead(address indexed reader, address indexed writer, string slug, uint256 usdcPaid);
     event CommentPaid(address indexed reader, address indexed writer, string slug, uint256 usdcPaid, string commentHash);
     event ClapPaid(address indexed reader, address indexed writer, string slug, uint256 usdcPaid);
+    event AgentSearchPaid(address indexed reader, uint256 totalFee, uint256 platformFee);
     event Withdrawn(address indexed reader, uint256 usdcAmount);
 
     // ─── Errors ───────────────────────────────────────────────────────────────
     error InsufficientBalance();
     error TransferFailed();
+    error ArrayLengthMismatch();
 
     // ─── Constructor ──────────────────────────────────────────────────────────
     constructor(
@@ -131,13 +133,13 @@ contract ReaderVault {
      * @param reader  Reader address (called by x402 middleware via trusted relayer)
      * @param writer  Writer address to receive payment
      * @param slug    Article slug (for event indexing)
-     * @param price   Total dynamic price set by the creator
+     * @param price   The author's set price (Platform fee is added on top)
      */
     function payForRead(address reader, address writer, string calldata slug, uint256 price) external {
-        require(price >= PLATFORM_FEE, "Price must be at least platform fee");
-        _processPayment(reader, writer, slug, price, PLATFORM_FEE, IWriterVault.PaymentType.Read);
+        uint256 totalCharge = price + PLATFORM_FEE;
+        _processPayment(reader, writer, slug, totalCharge, PLATFORM_FEE, IWriterVault.PaymentType.Read);
         totalReadsPerformed[reader] += 1;
-        emit ArticleRead(reader, writer, slug, price);
+        emit ArticleRead(reader, writer, slug, totalCharge);
     }
 
     /**
@@ -166,6 +168,62 @@ contract ReaderVault {
         _processPayment(reader, writer, slug, clapPrice, 0, IWriterVault.PaymentType.Clap);
         totalClapsGiven[reader] += 1;
         emit ClapPaid(reader, writer, slug, clapPrice);
+    }
+
+    /**
+     * @notice Pay a dynamic fee for an AI Agent search, splitting the fee among authors and platform.
+     * @param reader       Reader address paying for the search
+     * @param writers      Array of writer addresses whose articles were cited
+     * @param slugs        Array of slugs that were cited
+     * @param authorShares Array of USDC amounts each author should receive
+     * @param totalPrice   Total USDC price the reader is paying
+     */
+    function payForAgentSearch(
+        address reader, 
+        address[] calldata writers, 
+        string[] calldata slugs, 
+        uint256[] calldata authorShares, 
+        uint256 totalPrice
+    ) external {
+        if (writers.length != slugs.length || writers.length != authorShares.length) revert ArrayLengthMismatch();
+        require(totalPrice > 0, "Search fee must be > 0");
+
+        uint256 floatBalance = usdcFloat[reader];
+        uint256 totalDistributed = 0;
+
+        // Ensure user has enough funds
+        if (floatBalance >= totalPrice) {
+            usdcFloat[reader] -= totalPrice;
+        } else {
+            uint256 usycNeeded = teller.convertToShares(totalPrice); 
+            if (usycStaked[reader] < usycNeeded) revert InsufficientBalance();
+
+            usycStaked[reader] -= usycNeeded;
+            uint256 usdcOut = teller.redeem(usycNeeded, address(this), address(this));
+
+            if (usdcOut < totalPrice) revert InsufficientBalance();
+            if (usdcOut > totalPrice) {
+                usdcFloat[reader] += (usdcOut - totalPrice);
+            }
+        }
+
+        // Distribute to authors
+        for (uint256 i = 0; i < writers.length; i++) {
+            uint256 share = authorShares[i];
+            if (share > 0) {
+                totalDistributed += share;
+                IWriterVault(writerVault).receivePayment{value: share}(writers[i], slugs[i], IWriterVault.PaymentType.AgentSearch);
+            }
+        }
+
+        // Remainder goes to platform (owner)
+        uint256 platformFee = totalPrice - totalDistributed;
+        if (platformFee > 0) {
+            (bool success, ) = owner.call{value: platformFee}("");
+            if (!success) revert TransferFailed();
+        }
+
+        emit AgentSearchPaid(reader, totalPrice, platformFee);
     }
 
     /**

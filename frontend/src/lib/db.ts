@@ -2,6 +2,8 @@ import { PrismaClient } from '@prisma/client';
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
+console.log(`[db.ts] Initializing Prisma with DB: ${process.env.DATABASE_URL?.split('@')[1] || 'unknown'}`);
+
 export const prisma =
   globalForPrisma.prisma ||
   new PrismaClient({
@@ -11,6 +13,16 @@ export const prisma =
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface DbComment {
+  id: string;
+  content: string;
+  author: string;
+  author_addr: string;
+  article_slug: string;
+  tx_hash: string | null;
+  created_at: string;
+}
 
 export interface DbArticle {
   id: string;
@@ -25,6 +37,7 @@ export interface DbArticle {
   price: number;
   reads: number;
   created_at: string;
+  comments?: DbComment[];
 }
 
 export interface DbArticleReadEvent {
@@ -63,26 +76,90 @@ export async function saveArticle(article: Omit<DbArticle, "id" | "reads" | "cre
 }
 
 /** Fetch a single article by slug */
-export async function fetchArticle(slug: string): Promise<DbArticle | null> {
-  const data = await prisma.article.findUnique({
-    where: { slug }
-  });
+export async function fetchArticle(slug: string): Promise<DbArticle & { availableSlugs?: string[] } | null> {
+  const cleanSlug = slug.trim();
+  console.log(`[db.ts] Attempting to fetch article with slug: "${cleanSlug}"`);
+  try {
+    let data = await prisma.article.findUnique({
+      where: { slug: cleanSlug },
+      include: {
+        comments: {
+          orderBy: { createdAt: "desc" }
+        }
+      }
+    });
 
-  if (!data) return null;
-  return {
-    id: data.id,
-    slug: data.slug,
-    title: data.title,
-    author: data.author,
-    author_address: data.authorAddress,
-    category: data.category,
-    excerpt: data.excerpt,
-    read_time: data.readTime,
-    content: data.content,
-    price: Number(data.price),
-    reads: data.reads,
-    created_at: data.createdAt.toISOString()
-  };
+    if (!data) {
+      console.log(`[db.ts] exact findUnique failed, trying findFirst case-insensitive for "${cleanSlug}"`);
+      data = await prisma.article.findFirst({
+        where: { slug: { equals: cleanSlug, mode: 'insensitive' } },
+        include: {
+          comments: {
+            orderBy: { createdAt: "desc" }
+          }
+        }
+      });
+    }
+
+    if (!data) {
+      const all = await prisma.article.findMany({ select: { slug: true } });
+      const available = all.map(a => a.slug);
+      console.log(`[db.ts] No article found. Available: ${available.join(', ')}`);
+      // Return a special object with available slugs and DB info to help debug in the UI
+      return { 
+        id: "none", 
+        availableSlugs: available,
+        currentDb: process.env.DATABASE_URL?.split('@')[1] || 'unknown'
+      } as any;
+    }
+
+    console.log(`[db.ts] Successfully found article: ${data.title}`);
+    return {
+      id: data.id,
+      slug: data.slug,
+      title: data.title,
+      author: data.author,
+      author_address: data.authorAddress,
+      category: data.category,
+      excerpt: data.excerpt,
+      read_time: data.readTime,
+      content: data.content,
+      price: Number(data.price),
+      reads: data.reads,
+      created_at: data.createdAt.toISOString(),
+      comments: data.comments.map(c => ({
+        id: c.id,
+        content: c.content,
+        author: c.author,
+        author_addr: c.authorAddr,
+        article_slug: c.articleSlug,
+        tx_hash: c.txHash,
+        created_at: c.createdAt.toISOString(),
+      }))
+    };
+  } catch (err) {
+    console.error(`[db.ts] fetchArticle failed for slug ${cleanSlug}:`, err);
+    return null;
+  }
+}
+
+/** Save a new comment to the DB. */
+export async function saveComment(data: {
+  slug: string;
+  author: string;
+  authorAddr: string;
+  content: string;
+  txHash?: string;
+}) {
+  return await prisma.comment.create({
+    data: {
+      articleSlug: data.slug,
+      author: data.author,
+      authorAddr: data.authorAddr,
+      content: data.content,
+      txHash: data.txHash,
+    },
+  });
 }
 
 /** Fetch all articles (metadata only — no content body) */
@@ -119,6 +196,23 @@ export async function fetchAllArticles(): Promise<Omit<DbArticle, "content">[]> 
   }));
 }
 
+/** Check if a reader has already paid for an article in the past. */
+export async function hasPaidForArticle(reader: string, slug: string): Promise<boolean> {
+  try {
+    const count = await prisma.articleReadEvent.count({
+      where: {
+        reader: { equals: reader, mode: "insensitive" },
+        articleSlug: slug,
+        eventType: "READ"
+      }
+    });
+    return count > 0;
+  } catch (err) {
+    console.error("hasPaidForArticle failed:", err);
+    return false;
+  }
+}
+
 /** Increment read count for an article */
 export async function incrementReads(slug: string): Promise<void> {
   await prisma.article.update({
@@ -129,6 +223,40 @@ export async function incrementReads(slug: string): Promise<void> {
       }
     }
   });
+}
+
+/** Record an on-chain read event immediately upon verification */
+export async function recordReadEvent(data: {
+  txHash: string;
+  logIndex: number;
+  blockNumber: bigint;
+  reader: string;
+  writerAddress: string;
+  articleSlug: string;
+  amount: number;
+}) {
+  const eventId = `${data.txHash}-${data.logIndex}`;
+  try {
+    await prisma.articleReadEvent.upsert({
+      where: { txHash: data.txHash },
+      create: {
+        id: eventId,
+        txHash: data.txHash,
+        logIndex: data.logIndex,
+        blockNumber: data.blockNumber,
+        reader: data.reader,
+        writerAddress: data.writerAddress,
+        articleSlug: data.articleSlug,
+        amount: data.amount,
+        eventType: "READ",
+        observedAt: new Date(),
+      },
+      update: {}
+    });
+    console.log(`[db.ts] Recorded Read event for ${data.articleSlug} by ${data.reader}`);
+  } catch (err) {
+    console.error(`[db.ts] Failed to record Read event:`, err);
+  }
 }
 
 /** Fetch recent mirrored ArticleRead events written by Goldsky Mirror. */

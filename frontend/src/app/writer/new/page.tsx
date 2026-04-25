@@ -147,7 +147,10 @@ export default function NewArticlePage() {
       <nav className="fixed top-0 w-full z-50 nav-glass">
         <div className="max-w-[800px] mx-auto px-6 h-12 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/" className="text-[15px] font-bold text-[#1d1d1f] tracking-tight">HumbleHumansHub</Link>
+            <Link href="/" className="flex items-center gap-2 text-[15px] font-bold text-[#1d1d1f] tracking-tight">
+              <img src="/logo.png" alt="Logo" className="h-6 w-auto object-contain" />
+              HumbleHumansHub
+            </Link>
             <Link href="/writer" className="text-[13px] text-[#6e6e73] hover:text-[#1d1d1f] transition-colors">‹ Dashboard</Link>
           </div>
           <div className="flex items-center gap-3">
@@ -159,7 +162,7 @@ export default function NewArticlePage() {
               className="btn-accent py-1.5 px-4 disabled:opacity-40 text-[13px] rounded-full"
               id="publish-btn"
             >
-              {publishing ? "Publishing…" : `Publish at $${price} per read`}
+              {publishing ? "Publishing…" : `Publish (Total: $${(Number(price) + 0.001).toFixed(3)})`}
             </button>
           </div>
         </div>
@@ -200,7 +203,7 @@ export default function NewArticlePage() {
             <div className="h-4 w-[1px] bg-black/[0.1] hidden md:block" />
 
             <div className="flex items-center gap-3">
-              <span className="text-[14px] text-[#86868b]">Reader price:</span>
+              <span className="text-[14px] text-[#86868b]">Author earnings:</span>
               <select
                 value={price}
                 onChange={e => setPrice(e.target.value)}
@@ -208,9 +211,9 @@ export default function NewArticlePage() {
                 style={{ backgroundImage: "none" }}
                 id="price-select"
               >
-                <option value="0.001">$0.001</option>
-                <option value="0.005">$0.005</option>
-                <option value="0.01">$0.010</option>
+                <option value="0.001">$0.001 (Total $0.002)</option>
+                <option value="0.005">$0.005 (Total $0.006)</option>
+                <option value="0.009">$0.009 (Total $0.010)</option>
               </select>
             </div>
           </div>

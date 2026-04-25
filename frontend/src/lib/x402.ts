@@ -10,9 +10,9 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { createPublicClient, http, decodeEventLog, parseAbiItem, type Hash } from "viem";
+import { createPublicClient, http, decodeEventLog, parseAbiItem, verifyMessage, formatUnits, type Hash } from "viem";
 import { contracts, PAYMENT } from "./arc";
-import { incrementReads } from "./db";
+import { incrementReads, hasPaidForArticle, recordReadEvent } from "./db";
 
 export interface PaymentRequiredPayload {
   version: number;
@@ -107,13 +107,42 @@ export function paymentRequired(
  */
 export async function verifyPayment(
   request: NextRequest,
-  expectedSlug: string
+  expectedSlug: string,
+  writerAddress: string
 ): Promise<{
   valid: boolean;
   payer?: string;
   txHash?: string;
   error?: string;
+  logDetails?: { amount: number; blockNumber: bigint; logIndex: number };
 }> {
+  // ─── Previous Payer Bypass Check ─────────────────────────────────────────
+  const readerAddress = request.headers.get("X-Reader-Address");
+  if (readerAddress) {
+    // Previous payment check
+    const alreadyPaid = await hasPaidForArticle(readerAddress, expectedSlug);
+    if (alreadyPaid) {
+      return { valid: true, payer: readerAddress };
+    }
+  }
+
+  // ── Cryptographic Writer Bypass (Fallback) ───────────────────────────────
+  const writerSignature = request.headers.get("X-Writer-Signature");
+  if (writerSignature) {
+    try {
+      const isValid = await verifyMessage({
+        address: writerAddress as `0x${string}`,
+        message: `I am the author of ${expectedSlug}`,
+        signature: writerSignature as `0x${string}`,
+      });
+      if (isValid) {
+        return { valid: true, payer: writerAddress };
+      }
+    } catch (err) {
+      console.error("[x402] Writer signature verification failed:", err);
+    }
+  }
+
   const paymentHeader = request.headers.get("X-Payment");
 
   if (!paymentHeader) {
@@ -160,6 +189,10 @@ export async function verifyPayment(
 
   // Find the ArticleRead event emitted by ReaderVault in this tx
   let articleReadFound = false;
+  let decodedAmount = 0;
+  let logBlockNumber = BigInt(0);
+  let logIndex = 0;
+
   for (const log of receipt.logs) {
     if (log.address.toLowerCase() !== readerVaultAddress) continue;
     try {
@@ -170,6 +203,9 @@ export async function verifyPayment(
       });
       if (decoded.eventName === "ArticleRead" && decoded.args.slug === expectedSlug) {
         articleReadFound = true;
+        decodedAmount = Number(formatUnits((decoded.args as any).usdcPaid, 18));
+        logBlockNumber = log.blockNumber ?? BigInt(0);
+        logIndex = log.logIndex ?? 0;
         break;
       }
     } catch {
@@ -184,7 +220,12 @@ export async function verifyPayment(
     };
   }
 
-  return { valid: true, payer, txHash };
+  return { 
+    valid: true, 
+    payer, 
+    txHash, 
+    logDetails: { amount: decodedAmount, blockNumber: logBlockNumber, logIndex: logIndex } 
+  };
 }
 
 /**
@@ -197,16 +238,29 @@ export function withX402(
   slug: string
 ) {
   return async (request: NextRequest): Promise<NextResponse> => {
-    const { valid, payer } = await verifyPayment(request, slug);
+    const { valid, payer, txHash, logDetails } = await verifyPayment(request, slug, writerAddress);
 
     if (!valid) {
       return paymentRequired(slug, writerAddress);
     }
 
-    // On-chain tx confirmed and ArticleRead event verified — safe to record read
-    incrementReads(slug).catch(err =>
-      console.error("[x402] incrementReads failed:", err)
-    );
+    // Only increment reads and record event if it was an actual on-chain payment
+    if (txHash && logDetails && payer) {
+      // Write to DB immediately so user doesn't have to pay again
+      recordReadEvent({
+        txHash,
+        logIndex: logDetails.logIndex,
+        blockNumber: logDetails.blockNumber,
+        reader: payer,
+        writerAddress: writerAddress,
+        articleSlug: slug,
+        amount: logDetails.amount
+      }).catch(err => console.error("[x402] recordReadEvent failed:", err));
+
+      incrementReads(slug).catch(err =>
+        console.error("[x402] incrementReads failed:", err)
+      );
+    }
 
     return handler(request, { payer: payer! });
   };
