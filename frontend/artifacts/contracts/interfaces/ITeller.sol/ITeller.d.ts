@@ -84,7 +84,7 @@ export interface ITeller$Type {
           "type": "uint256"
         }
       ],
-      "stateMutability": "nonpayable",
+      "stateMutability": "payable",
       "type": "function"
     },
     {

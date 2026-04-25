@@ -30,6 +30,14 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IWriterVault__factory>;
     getContractFactory(
+      name: "MockTeller",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.MockTeller__factory>;
+    getContractFactory(
+      name: "MockUSYC",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.MockUSYC__factory>;
+    getContractFactory(
       name: "ReaderVault",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ReaderVault__factory>;
@@ -59,6 +67,16 @@ declare module "hardhat/types/runtime" {
       signer?: ethers.Signer
     ): Promise<Contracts.IWriterVault>;
     getContractAt(
+      name: "MockTeller",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.MockTeller>;
+    getContractAt(
+      name: "MockUSYC",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.MockUSYC>;
+    getContractAt(
       name: "ReaderVault",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -86,6 +104,14 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IWriterVault>;
     deployContract(
+      name: "MockTeller",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MockTeller>;
+    deployContract(
+      name: "MockUSYC",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MockUSYC>;
+    deployContract(
       name: "ReaderVault",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.ReaderVault>;
@@ -114,6 +140,16 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IWriterVault>;
+    deployContract(
+      name: "MockTeller",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MockTeller>;
+    deployContract(
+      name: "MockUSYC",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.MockUSYC>;
     deployContract(
       name: "ReaderVault",
       args: any[],

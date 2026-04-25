@@ -7,7 +7,7 @@ pragma solidity ^0.8.24;
  *         Enables T+0 atomic USDC ↔ USYC conversion.
  */
 interface ITeller {
-    function deposit(uint256 assets, address receiver) external returns (uint256 shares);
+    function deposit(uint256 assets, address receiver) external payable returns (uint256 shares);
     function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
     
     function previewDeposit(uint256 assets) external view returns (uint256 shares);

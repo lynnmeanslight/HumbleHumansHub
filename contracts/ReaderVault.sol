@@ -72,9 +72,7 @@ contract ReaderVault {
 
         uint256 usycMinted = 0;
         if (toStake > 0) {
-            address assetAddress = teller.asset();
-            IERC20(assetAddress).approve(address(teller), toStake);
-            usycMinted = teller.deposit(toStake, address(this));
+            usycMinted = teller.deposit{value: toStake}(toStake, address(this));
             usycStaked[msg.sender] += usycMinted;
         }
 

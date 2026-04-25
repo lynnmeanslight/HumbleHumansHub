@@ -19,18 +19,20 @@ import type {
   TypedEventLog,
   TypedListener,
   TypedContractMethod,
-} from "../../common";
+} from "../common";
 
-export interface ITellerInterface extends Interface {
+export interface MockTellerInterface extends Interface {
   getFunction(
     nameOrSignature:
       | "asset"
       | "convertToAssets"
       | "convertToShares"
       | "deposit"
+      | "dummyAsset"
       | "previewDeposit"
       | "previewRedeem"
       | "redeem"
+      | "usycToken"
   ): FunctionFragment;
 
   encodeFunctionData(functionFragment: "asset", values?: undefined): string;
@@ -47,6 +49,10 @@ export interface ITellerInterface extends Interface {
     values: [BigNumberish, AddressLike]
   ): string;
   encodeFunctionData(
+    functionFragment: "dummyAsset",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "previewDeposit",
     values: [BigNumberish]
   ): string;
@@ -58,6 +64,7 @@ export interface ITellerInterface extends Interface {
     functionFragment: "redeem",
     values: [BigNumberish, AddressLike, AddressLike]
   ): string;
+  encodeFunctionData(functionFragment: "usycToken", values?: undefined): string;
 
   decodeFunctionResult(functionFragment: "asset", data: BytesLike): Result;
   decodeFunctionResult(
@@ -69,6 +76,7 @@ export interface ITellerInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "deposit", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "dummyAsset", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "previewDeposit",
     data: BytesLike
@@ -78,13 +86,14 @@ export interface ITellerInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "redeem", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "usycToken", data: BytesLike): Result;
 }
 
-export interface ITeller extends BaseContract {
-  connect(runner?: ContractRunner | null): ITeller;
+export interface MockTeller extends BaseContract {
+  connect(runner?: ContractRunner | null): MockTeller;
   waitForDeployment(): Promise<this>;
 
-  interface: ITellerInterface;
+  interface: MockTellerInterface;
 
   queryFilter<TCEvent extends TypedContractEvent>(
     event: TCEvent,
@@ -143,6 +152,8 @@ export interface ITeller extends BaseContract {
     "payable"
   >;
 
+  dummyAsset: TypedContractMethod<[], [string], "view">;
+
   previewDeposit: TypedContractMethod<[assets: BigNumberish], [bigint], "view">;
 
   previewRedeem: TypedContractMethod<[shares: BigNumberish], [bigint], "view">;
@@ -152,6 +163,8 @@ export interface ITeller extends BaseContract {
     [bigint],
     "nonpayable"
   >;
+
+  usycToken: TypedContractMethod<[], [string], "view">;
 
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
@@ -174,6 +187,9 @@ export interface ITeller extends BaseContract {
     "payable"
   >;
   getFunction(
+    nameOrSignature: "dummyAsset"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
     nameOrSignature: "previewDeposit"
   ): TypedContractMethod<[assets: BigNumberish], [bigint], "view">;
   getFunction(
@@ -186,6 +202,9 @@ export interface ITeller extends BaseContract {
     [bigint],
     "nonpayable"
   >;
+  getFunction(
+    nameOrSignature: "usycToken"
+  ): TypedContractMethod<[], [string], "view">;
 
   filters: {};
 }

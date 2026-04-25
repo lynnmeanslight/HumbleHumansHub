@@ -42,12 +42,16 @@ async function main() {
   const publicClient = await hre.viem.getPublicClient();
   console.log("Deploying with address:", deployer.account.address);
 
-  // Official Arc Testnet Addresses
-  const usycTokenAddress = "0xe9185F0c5F296Ed1797AaE4238D26CCaBEadb86C";
-  const tellerAddress = "0x9fdF14c5B14173D74C08Af27AebFf39240dC105A";
+  console.log("\nDeploying MockTeller...");
+  const mockTellerAddress = await deployWithTimeout(publicClient, deployer, "MockTeller");
+  console.log("MockTeller deployed to:", mockTellerAddress);
 
-  console.log("\nUsing official Hashnote Teller on Arc Testnet:", tellerAddress);
-  console.log("⚠️  Ensure ReaderVault and WriterVault are allowlisted on the Teller after deployment by Arc/Hashnote team.");
+  // Read USYC address from MockTeller
+  const mockTeller = await hre.viem.getContractAt("MockTeller", mockTellerAddress);
+  const usycTokenAddress = await mockTeller.read.usycToken();
+  const tellerAddress = mockTellerAddress;
+
+  console.log("\nUsing MockTeller on Arc Testnet:", tellerAddress);
 
   // 1. Deploy WriterVault first (ReaderVault needs its address)
   console.log("\nDeploying WriterVault...");
