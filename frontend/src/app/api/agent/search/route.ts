@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
-import { fetchAllArticles } from "@/lib/db";
+import { fetchAllArticles, prisma } from "@/lib/db";
 import { parseUnits } from "viem";
+export const dynamic = "force-dynamic";
+
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 
@@ -116,7 +118,6 @@ Instructions:
     };
 
     // Save to DB
-    const { prisma } = await import("@/lib/db");
     const queryRecord = await prisma.agentQuery.create({
       data: {
         userAddress: req.headers.get("X-Reader-Address") || "0x0000000000000000000000000000000000000000",

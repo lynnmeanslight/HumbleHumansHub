@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
-import { fetchArticle } from "@/lib/db";
+import { fetchArticle, prisma } from "@/lib/db";
 import { createPublicClient, http, decodeEventLog, parseAbiItem, type Hash } from "viem";
 import { contracts } from "@/lib/arc";
+
+export const dynamic = "force-dynamic";
 
 const ARC_CHAIN_ID = Number(process.env.NEXT_PUBLIC_ARC_CHAIN_ID || "5042002");
 const ARC_RPC = process.env.NEXT_PUBLIC_ARC_RPC_URL || "https://rpc.testnet.arc.network";
@@ -105,7 +107,6 @@ Tone: Professional, highly intelligent, and helpful. You are justifying the fee 
     const finalAnswer = response.text || "I was unable to formulate an answer from the provided texts.";
 
     // Save final answer and txHash to DB
-    const { prisma } = await import("@/lib/db");
     try {
       await prisma.agentQuery.update({
         where: { id: queryId },

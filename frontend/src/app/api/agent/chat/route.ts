@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+export const dynamic = "force-dynamic";
+
 import { fetchAllArticles, fetchArticle } from "@/lib/db";
 
 // Initialize Gemini Client
