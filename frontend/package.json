@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "postinstall": "prisma generate",
     "subgraph:codegen": "npm --prefix subgraph run codegen",
     "subgraph:build": "npm --prefix subgraph run build",
     "subgraph:deploy": "npm --prefix subgraph run deploy"
