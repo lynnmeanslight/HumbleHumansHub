@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { prompt, history = [] } = await req.json();
+    const { prompt } = await req.json();
 
     if (!prompt) {
       return NextResponse.json({ error: "Prompt is required." }, { status: 400 });
@@ -47,7 +47,7 @@ When a user asks a question:
 
 Tone: Professional, helpful, concise, and persuasive. You are a premium matchmaker connecting curious readers with expert authors.`,
         tools: [{
-          functionDeclarations: [searchAndReadDatabaseTool]
+          functionDeclarations: [searchAndReadDatabaseTool as any]
         }],
         temperature: 0.4,
       }
@@ -66,7 +66,7 @@ Tone: Professional, helpful, concise, and persuasive. You are a premium matchmak
         const articlesMeta = await fetchAllArticles();
         
         // Simple client-side search simulation
-        const query = (call.args.query as string).toLowerCase();
+        const query = ((call.args?.query as string) || "").toLowerCase();
         const matchedMeta = articlesMeta.filter(a => 
           a.title.toLowerCase().includes(query) || 
           a.excerpt.toLowerCase().includes(query) ||
@@ -81,7 +81,7 @@ Tone: Professional, helpful, concise, and persuasive. You are a premium matchmak
                 fullArticles.push({
                     title: full.title,
                     slug: full.slug,
-                    author: full.author,
+                    authorAddress: full.author_address,
                     price: full.price,
                     full_content_for_ai_eyes_only: full.content // The AI reads this, but shouldn't leak it
                 });

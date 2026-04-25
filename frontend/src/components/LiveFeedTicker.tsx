@@ -35,7 +35,7 @@ export function LiveFeedTicker() {
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
               <span className="badge badge-positive text-[11px] py-0.5 px-2">${item.amount.toFixed(3)}</span>
-              <span className="text-[11px] text-[#86868b] w-14 text-right">{formatAge(item.ageMs)}</span>
+              <span className="text-[11px] text-[#86868b] w-20 text-right">{formatAge(item.ageMs)}</span>
             </div>
           </div>
         ))}

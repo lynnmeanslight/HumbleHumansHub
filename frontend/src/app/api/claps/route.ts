@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { recordReadEvent } from "@/lib/db";
 import { createPublicClient, http, decodeEventLog, parseAbiItem, type Hash, formatUnits } from "viem";
 import { contracts } from "@/lib/arc";
 
@@ -44,7 +43,7 @@ export async function POST(request: NextRequest) {
     let decodedAmount = 0;
 
     for (const log of receipt.logs) {
-      if (log.address.toLowerCase() !== contracts.readerVault.toLowerCase()) continue;
+      if (log.address.toLowerCase() !== (contracts.readerVault || "").toLowerCase()) continue;
       try {
         const decoded = decodeEventLog({
           abi: [CLAP_PAID_EVENT],

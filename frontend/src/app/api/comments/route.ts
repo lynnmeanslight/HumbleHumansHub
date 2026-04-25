@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     let decodedAmount = 0;
 
     for (const log of receipt.logs) {
-      if (log.address.toLowerCase() !== contracts.readerVault.toLowerCase()) continue;
+      if (log.address.toLowerCase() !== (contracts.readerVault || "").toLowerCase()) continue;
       try {
         const decoded = decodeEventLog({
           abi: [COMMENT_PAID_EVENT],
@@ -83,19 +83,31 @@ export async function POST(request: NextRequest) {
 
     // Attempt to get user's display name
     const user = await fetchUserByAddress(authorAddr);
-    const authorName = user?.displayName || "Anonymous";
+    let authorName = "Anonymous";
+    if (user?.displayName) authorName = user.displayName;
+    else if (user?.username) authorName = `@${user.username}`;
+    else authorName = `${authorAddr.slice(0, 6)}...${authorAddr.slice(-4)}`;
 
     const comment = await saveComment({
       slug,
-      author: authorName,
       authorAddr,
       content,
       txHash,
     });
 
-    return NextResponse.json({ comment });
-  } catch (err) {
+    return NextResponse.json({ 
+      comment: {
+        id: comment.id,
+        content: comment.content,
+        author: authorName,
+        author_addr: comment.authorAddr,
+        article_slug: comment.articleSlug,
+        tx_hash: comment.txHash,
+        created_at: comment.createdAt.toISOString()
+      } 
+    });
+  } catch (err: any) {
     console.error("[api/comments] POST failed:", err);
-    return NextResponse.json({ error: "Failed to save comment" }, { status: 500 });
+    return NextResponse.json({ error: `Failed to save comment: ${err.message || JSON.stringify(err)}` }, { status: 500 });
   }
 }

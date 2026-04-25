@@ -29,10 +29,6 @@ export default function HomePage() {
       {/* Hero */}
       <section className="pt-12">
         <div className="max-w-content mx-auto px-6 pt-24 pb-16 md:pt-36 md:pb-20 text-center">
-          <div className="badge badge-accent mb-6 inline-flex">
-            <span className="live-dot" />
-            Live payments
-          </div>
           <h1 className="text-hero mb-5">
             Pay <span className="text-[#0071e3]">$0.001</span> per read.
             <br />

@@ -90,7 +90,10 @@ export function ClapAndComment({ writerAddress, slug, initialComments = [] }: Cl
         }),
       });
 
-      if (!res.ok) throw new Error("Failed to save comment to database");
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || "Failed to save comment to database");
+      }
       const { comment } = await res.json();
       
       setComments([comment, ...comments]);
@@ -149,17 +152,24 @@ export function ClapAndComment({ writerAddress, slug, initialComments = [] }: Cl
         </form>
 
         {/* List of comments */}
-        <div className="space-y-4">
+        <div className="space-y-1">
           {comments.length === 0 ? (
-            <p className="text-[13px] text-[#86868b] text-center py-4">No comments yet. Be the first!</p>
+            <div className="text-center py-10 bg-[#fbfbfd] rounded-2xl border border-black/[0.04]">
+              <p className="text-[14px] text-[#86868b]">No comments yet. Be the first to share your thoughts!</p>
+            </div>
           ) : (
             comments.map((c, idx) => (
-              <div key={c.id || idx} className="p-4 rounded-xl bg-gray-50 border border-black/[0.04]">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-[13px] font-semibold text-[#1d1d1f]">{c.author}</p>
-                  <p className="text-[11px] text-[#86868b]">{formatAddr(c.author_addr || c.authorAddr)}</p>
+              <div key={c.id || idx} className="py-5 border-b border-black/[0.06] last:border-0">
+                <div className="flex items-center gap-3 mb-2.5">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 border border-black/[0.04] flex items-center justify-center text-[13px] font-bold text-gray-500 shrink-0">
+                    {(c.author || "?")[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-[14px] font-semibold text-[#1d1d1f] leading-tight">{c.author}</p>
+                    <p className="text-[11px] text-[#86868b] mt-0.5 font-mono">{formatAddr(c.author_addr || c.authorAddr)}</p>
+                  </div>
                 </div>
-                <p className="text-[14px] text-[#424245] leading-relaxed">{c.content}</p>
+                <p className="text-[14px] text-[#424245] leading-relaxed pl-12">{c.content}</p>
               </div>
             ))
           )}

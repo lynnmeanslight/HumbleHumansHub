@@ -206,9 +206,26 @@ export function PaymentGate({ articleTitle, authorName, price = "$0.001", slug, 
   };
 
   if (uiState === "unlocked" && content !== null) {
+    const isAuthor = address?.toLowerCase() === writerAddress.toLowerCase();
+
     return (
       <div className="animate-fade-in" id="article-content-unlocked">
         <article>{renderMarkdown(content)}</article>
+        
+        <div className="mt-12 mb-8 flex items-center gap-2.5 border-t border-black/[0.06] pt-6">
+          {isAuthor ? (
+            <>
+              <span className="text-[13px] text-[#0071e3] font-medium">Author View</span>
+              <span className="text-[12px] text-[#86868b]">You bypass the paywall for your own article</span>
+            </>
+          ) : (
+            <>
+              <span className="text-[13px] text-[#1a8917] font-medium">✓ Settled</span>
+              <span className="text-[12px] text-[#86868b]">${totalPriceNum.toFixed(3)} paid</span>
+            </>
+          )}
+        </div>
+
         <ClapAndComment writerAddress={writerAddress} slug={slug} initialComments={comments} />
       </div>
     );
@@ -225,10 +242,9 @@ export function PaymentGate({ articleTitle, authorName, price = "$0.001", slug, 
 
   return (
     <div className="relative" id="payment-gate">
-      <div className="relative overflow-hidden rounded-xl min-h-[400px]">
-        <div className="blur-lg opacity-10 select-none pointer-events-none max-h-[400px] overflow-hidden bg-gray-100 h-96 rounded-xl" />
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-t from-white via-white/95 to-white/70">
-          <div className="text-center max-w-sm mx-auto px-6">
+      <div className="relative overflow-hidden rounded-xl border border-black/[0.04] bg-gradient-to-b from-[#fbfbfd] to-white">
+        <div className="py-12 md:py-16 flex items-center justify-center">
+          <div className="text-center w-full max-w-sm mx-auto px-6">
             <div className="mx-auto w-12 h-12 rounded-full bg-[#0071e3]/10 flex items-center justify-center mb-4">
               <svg className="w-5 h-5 text-[#0071e3]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />

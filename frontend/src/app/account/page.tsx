@@ -5,7 +5,9 @@ import { useAccount } from "wagmi";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ConnectWallet } from "@/components/ConnectWallet";
 import { WalletBalance } from "@/components/WalletBalance";
+import { WriterEarnings } from "@/components/WriterEarnings";
 import { useReaderVault } from "@/hooks/useReaderVault";
+import { useWriterVault } from "@/hooks/useWriterVault";
 import Link from "next/link";
 
 // ─── Profile tab ────────────────────────────────────────────────────────────
@@ -16,6 +18,18 @@ function ProfileTab({ address }: { address: string }) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Writer stats
+  const {
+    estimatedUsdc,
+    lifetimeUsdc,
+    totalReads,
+  } = useWriterVault();
+
+  const pendingUsdc  = Number(estimatedUsdc)  / 1e18;
+  const earnedUsdc   = Number(lifetimeUsdc)   / 1e18;
+  const yieldEarned  = Math.max(0, pendingUsdc - earnedUsdc);
+  const reads        = Number(totalReads);
 
   useEffect(() => {
     fetch(`/api/user?address=${address}`)
@@ -65,86 +79,111 @@ function ProfileTab({ address }: { address: string }) {
   }
 
   return (
-    <form onSubmit={handleSave} className="space-y-5 max-w-md">
-      {/* Wallet address (read-only) */}
-      <div>
-        <label className="block text-[12px] font-medium text-[#1d1d1f] mb-2">Account address</label>
-        <div className="h-10 px-3.5 rounded-lg border border-black/[0.08] bg-black/[0.02] flex items-center">
-          <span className="text-[13px] text-[#86868b] font-mono truncate">{address}</span>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="lg:col-span-2 space-y-6">
+        <h2 className="text-[20px] font-bold text-[#1d1d1f] tracking-tight pl-1">Your Details</h2>
+        <form onSubmit={handleSave} className="space-y-5 bg-white p-6 rounded-xl border border-black/[0.06]">
+          {/* Wallet address (read-only) */}
+          <div>
+            <label className="block text-[12px] font-medium text-[#1d1d1f] mb-2">Account address</label>
+            <div className="h-10 px-3.5 rounded-lg border border-black/[0.08] bg-black/[0.02] flex items-center">
+              <span className="text-[13px] text-[#86868b] font-mono truncate">{address}</span>
+            </div>
+          </div>
+
+          {/* Display name */}
+          <div>
+            <label className="block text-[12px] font-medium text-[#1d1d1f] mb-2">
+              Display name
+              <span className="ml-1.5 text-[#86868b] font-normal">Shown on your articles</span>
+            </label>
+            <input
+              type="text"
+              value={profile.displayName}
+              onChange={e => setProfile(p => ({ ...p, displayName: e.target.value }))}
+              placeholder="Anonymous"
+              maxLength={60}
+              className="w-full h-10 px-3.5 rounded-lg border border-black/[0.12] text-[14px] text-[#1d1d1f] placeholder:text-[#86868b] focus:outline-none focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3]/20 transition-all"
+            />
+          </div>
+
+          {/* Username */}
+          <div>
+            <label className="block text-[12px] font-medium text-[#1d1d1f] mb-2">
+              Username
+              <span className="ml-1.5 text-[#86868b] font-normal">Optional — letters, numbers, underscores</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-[#86868b]">@</span>
+              <input
+                type="text"
+                value={profile.username}
+                onChange={e => setProfile(p => ({ ...p, username: e.target.value }))}
+                placeholder="yourname"
+                maxLength={30}
+                pattern="[a-zA-Z0-9_]*"
+                className="w-full h-10 pl-7 pr-3.5 rounded-lg border border-black/[0.12] text-[14px] text-[#1d1d1f] placeholder:text-[#86868b] focus:outline-none focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3]/20 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Bio */}
+          <div>
+            <label className="block text-[12px] font-medium text-[#1d1d1f] mb-2">
+              Bio
+              <span className="ml-1.5 text-[#86868b] font-normal">Max 200 characters</span>
+            </label>
+            <textarea
+              value={profile.bio}
+              onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))}
+              placeholder="Tell readers a bit about yourself…"
+              maxLength={200}
+              rows={3}
+              className="w-full px-3.5 py-2.5 rounded-lg border border-black/[0.12] text-[14px] text-[#1d1d1f] placeholder:text-[#86868b] focus:outline-none focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3]/20 transition-all resize-none"
+            />
+            <p className="mt-1 text-[11px] text-[#86868b] text-right">{profile.bio.length}/200</p>
+          </div>
+
+          {error && (
+            <p className="text-[13px] text-red-500 bg-red-50 px-3.5 py-2.5 rounded-lg">{error}</p>
+          )}
+
+          <div className="flex items-center gap-3 pt-1">
+            <button type="submit" disabled={saving} className="btn-primary text-[14px] py-2.5 px-6 disabled:opacity-50">
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+            {saved && (
+              <span className="text-[13px] text-[#1a8917] flex items-center gap-1.5">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+                Saved
+              </span>
+            )}
+          </div>
+        </form>
+      </div>
+      
+      {/* Writer Stats Sidebar */}
+      <div className="space-y-6">
+        <h2 className="text-[20px] font-bold text-[#1d1d1f] tracking-tight pl-1">Writer Stats</h2>
+        <div className="card overflow-hidden bg-white">
+          <div className="px-5 py-4 border-b border-black/[0.06] flex items-center justify-between">
+            <span className="text-[14px] font-semibold text-[#1d1d1f]">Total Reads</span>
+            <span className="text-[18px] font-bold text-[#0071e3]">{reads.toLocaleString()}</span>
+          </div>
+          <div className="px-5 py-4 border-b border-black/[0.06] flex items-center justify-between bg-[#fbfbfd]">
+            <span className="text-[14px] font-semibold text-[#1d1d1f]">Reader Revenue</span>
+            <span className="text-[18px] font-bold text-[#1d1d1f]">${earnedUsdc.toFixed(3)}</span>
+          </div>
+          <div className="px-5 py-4 flex items-center justify-between bg-[#f0fdf4]">
+            <span className="text-[14px] font-semibold text-[#1a8917]">Yield Generated</span>
+            <span className="text-[18px] font-bold text-[#1a8917]">+${yieldEarned.toFixed(4)}</span>
+          </div>
         </div>
+        <Link href="/profile" className="btn-secondary w-full text-center block">Manage Cash Outs →</Link>
       </div>
-
-      {/* Display name */}
-      <div>
-        <label className="block text-[12px] font-medium text-[#1d1d1f] mb-2">
-          Display name
-          <span className="ml-1.5 text-[#86868b] font-normal">Shown on your articles</span>
-        </label>
-        <input
-          type="text"
-          value={profile.displayName}
-          onChange={e => setProfile(p => ({ ...p, displayName: e.target.value }))}
-          placeholder="Anonymous"
-          maxLength={60}
-          className="w-full h-10 px-3.5 rounded-lg border border-black/[0.12] text-[14px] text-[#1d1d1f] placeholder:text-[#86868b] focus:outline-none focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3]/20 transition-all"
-        />
-      </div>
-
-      {/* Username */}
-      <div>
-        <label className="block text-[12px] font-medium text-[#1d1d1f] mb-2">
-          Username
-          <span className="ml-1.5 text-[#86868b] font-normal">Optional — letters, numbers, underscores</span>
-        </label>
-        <div className="relative">
-          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[13px] text-[#86868b]">@</span>
-          <input
-            type="text"
-            value={profile.username}
-            onChange={e => setProfile(p => ({ ...p, username: e.target.value }))}
-            placeholder="yourname"
-            maxLength={30}
-            pattern="[a-zA-Z0-9_]*"
-            className="w-full h-10 pl-7 pr-3.5 rounded-lg border border-black/[0.12] text-[14px] text-[#1d1d1f] placeholder:text-[#86868b] focus:outline-none focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3]/20 transition-all"
-          />
-        </div>
-      </div>
-
-      {/* Bio */}
-      <div>
-        <label className="block text-[12px] font-medium text-[#1d1d1f] mb-2">
-          Bio
-          <span className="ml-1.5 text-[#86868b] font-normal">Max 200 characters</span>
-        </label>
-        <textarea
-          value={profile.bio}
-          onChange={e => setProfile(p => ({ ...p, bio: e.target.value }))}
-          placeholder="Tell readers a bit about yourself…"
-          maxLength={200}
-          rows={3}
-          className="w-full px-3.5 py-2.5 rounded-lg border border-black/[0.12] text-[14px] text-[#1d1d1f] placeholder:text-[#86868b] focus:outline-none focus:border-[#0071e3] focus:ring-1 focus:ring-[#0071e3]/20 transition-all resize-none"
-        />
-        <p className="mt-1 text-[11px] text-[#86868b] text-right">{profile.bio.length}/200</p>
-      </div>
-
-      {error && (
-        <p className="text-[13px] text-red-500 bg-red-50 px-3.5 py-2.5 rounded-lg">{error}</p>
-      )}
-
-      <div className="flex items-center gap-3 pt-1">
-        <button type="submit" disabled={saving} className="btn-primary text-[14px] py-2.5 px-6 disabled:opacity-50">
-          {saving ? "Saving…" : "Save changes"}
-        </button>
-        {saved && (
-          <span className="text-[13px] text-[#1a8917] flex items-center gap-1.5">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-            </svg>
-            Saved
-          </span>
-        )}
-      </div>
-    </form>
+    </div>
   );
 }
 

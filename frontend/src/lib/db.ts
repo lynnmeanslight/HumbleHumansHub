@@ -28,7 +28,6 @@ export interface DbArticle {
   id: string;
   slug: string;
   title: string;
-  author: string;
   author_address: string;
   category: string;
   excerpt: string;
@@ -49,6 +48,7 @@ export interface DbArticleReadEvent {
   writer_address: string;
   article_slug: string;
   amount: number;
+  eventType: string;
   observed_at: string;
   created_at: string;
 }
@@ -61,7 +61,6 @@ export async function saveArticle(article: Omit<DbArticle, "id" | "reads" | "cre
     data: {
       slug: article.slug,
       title: article.title,
-      author: article.author,
       authorAddress: article.author_address,
       category: article.category,
       excerpt: article.excerpt,
@@ -114,11 +113,23 @@ export async function fetchArticle(slug: string): Promise<DbArticle & { availabl
     }
 
     console.log(`[db.ts] Successfully found article: ${data.title}`);
+    
+    // Fetch user profiles for all comment authors
+    const commentAuthorAddresses = Array.from(new Set(data.comments.map(c => c.authorAddr.toLowerCase())));
+    const commentUsers = await prisma.user.findMany({
+      where: { address: { in: commentAuthorAddresses, mode: 'insensitive' } },
+      select: { address: true, displayName: true, username: true }
+    });
+    
+    const userMap = commentUsers.reduce((acc, u) => {
+      acc[u.address.toLowerCase()] = u;
+      return acc;
+    }, {} as Record<string, { displayName: string | null; username: string | null }>);
+
     return {
       id: data.id,
       slug: data.slug,
       title: data.title,
-      author: data.author,
       author_address: data.authorAddress,
       category: data.category,
       excerpt: data.excerpt,
@@ -127,15 +138,23 @@ export async function fetchArticle(slug: string): Promise<DbArticle & { availabl
       price: Number(data.price),
       reads: data.reads,
       created_at: data.createdAt.toISOString(),
-      comments: data.comments.map(c => ({
-        id: c.id,
-        content: c.content,
-        author: c.author,
-        author_addr: c.authorAddr,
-        article_slug: c.articleSlug,
-        tx_hash: c.txHash,
-        created_at: c.createdAt.toISOString(),
-      }))
+      comments: data.comments.map(c => {
+        const u = userMap[c.authorAddr.toLowerCase()];
+        let displayAuthor = "Anonymous";
+        if (u?.displayName) displayAuthor = u.displayName;
+        else if (u?.username) displayAuthor = `@${u.username}`;
+        else displayAuthor = `${c.authorAddr.slice(0, 6)}...${c.authorAddr.slice(-4)}`;
+
+        return {
+          id: c.id,
+          content: c.content,
+          author: displayAuthor,
+          author_addr: c.authorAddr,
+          article_slug: c.articleSlug,
+          tx_hash: c.txHash,
+          created_at: c.createdAt.toISOString(),
+        };
+      })
     };
   } catch (err) {
     console.error(`[db.ts] fetchArticle failed for slug ${cleanSlug}:`, err);
@@ -143,57 +162,82 @@ export async function fetchArticle(slug: string): Promise<DbArticle & { availabl
   }
 }
 
-/** Save a new comment to the DB. */
+/** Save a new comment to the DB (idempotent based on txHash). */
 export async function saveComment(data: {
   slug: string;
-  author: string;
   authorAddr: string;
   content: string;
   txHash?: string;
 }) {
+  if (data.txHash) {
+    return await prisma.comment.upsert({
+      where: { txHash: data.txHash },
+      create: {
+        articleSlug: data.slug,
+        authorAddr: data.authorAddr,
+        content: data.content,
+        txHash: data.txHash,
+      },
+      update: {
+        content: data.content, // Allow updating content if same tx
+      }
+    });
+  }
+
   return await prisma.comment.create({
     data: {
       articleSlug: data.slug,
-      author: data.author,
       authorAddr: data.authorAddr,
       content: data.content,
-      txHash: data.txHash,
+      txHash: null,
     },
   });
 }
 
 /** Fetch all articles (metadata only — no content body) */
-export async function fetchAllArticles(): Promise<Omit<DbArticle, "content">[]> {
+export async function fetchAllArticles(): Promise<(Omit<DbArticle, "content"> & { author_name: string })[]> {
   const data = await prisma.article.findMany({
     select: {
       id: true,
       slug: true,
       title: true,
-      author: true,
       authorAddress: true,
       category: true,
       excerpt: true,
       readTime: true,
       price: true,
       reads: true,
-      createdAt: true
+      createdAt: true,
+      user: {
+        select: {
+          displayName: true,
+          username: true
+        }
+      }
     },
     orderBy: { createdAt: 'desc' }
   });
 
-  return data.map(item => ({
-    id: item.id,
-    slug: item.slug,
-    title: item.title,
-    author: item.author,
-    author_address: item.authorAddress,
-    category: item.category,
-    excerpt: item.excerpt,
-    read_time: item.readTime,
-    price: Number(item.price),
-    reads: item.reads,
-    created_at: item.createdAt.toISOString()
-  }));
+  return data.map(item => {
+    let authorName = "Anonymous";
+    if (item.user?.displayName) authorName = item.user.displayName;
+    else if (item.user?.username) authorName = `@${item.user.username}`;
+    else authorName = `${item.authorAddress.slice(0, 6)}...${item.authorAddress.slice(-4)}`;
+
+    return {
+      id: item.id,
+      slug: item.slug,
+      title: item.title,
+      author_address: item.authorAddress,
+      author_name: authorName,
+      category: item.category,
+      excerpt: item.excerpt,
+      read_time: item.readTime,
+      price: Number(item.price),
+      reads: item.reads,
+      created_at: item.createdAt.toISOString()
+    };
+  });
 }
 
 /** Check if a reader has already paid for an article in the past. */
@@ -275,6 +319,7 @@ export async function fetchRecentArticleReadEvents(limit = 50): Promise<DbArticl
     writer_address: item.writerAddress,
     article_slug: item.articleSlug,
     amount: Number(item.amount),
+    eventType: item.eventType,
     observed_at: item.observedAt.toISOString(),
     created_at: item.createdAt.toISOString(),
   }));
@@ -350,7 +395,6 @@ export async function fetchArticlesByAuthor(authorAddress: string): Promise<Omit
       id: true,
       slug: true,
       title: true,
-      author: true,
       authorAddress: true,
       category: true,
       excerpt: true,
@@ -366,7 +410,6 @@ export async function fetchArticlesByAuthor(authorAddress: string): Promise<Omit
     id: item.id,
     slug: item.slug,
     title: item.title,
-    author: item.author,
     author_address: item.authorAddress,
     category: item.category,
     excerpt: item.excerpt,

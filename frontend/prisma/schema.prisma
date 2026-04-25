@@ -25,7 +25,6 @@ model Article {
   id            String    @id @default(uuid()) @db.Uuid
   slug          String    @unique
   title         String
-  author        String    @default("Anonymous")
   authorAddress String    @default("0x0000000000000000000000000000000000000000") @map("author_address")
   category      String    @default("General")
   excerpt       String    @default("")
@@ -44,7 +43,6 @@ model Article {
 model Comment {
   id          String   @id @default(uuid()) @db.Uuid
   content     String
-  author      String   @default("Anonymous")
   authorAddr  String   @map("author_address")
   articleSlug String   @map("article_slug")
   txHash      String?  @unique @map("tx_hash")
@@ -70,4 +68,17 @@ model ArticleReadEvent {
   @@index([observedAt(sort: Desc)])
   @@index([articleSlug, observedAt(sort: Desc)])
   @@map("article_read_events")
+}
+
+model AgentQuery {
+  id            String   @id @default(uuid()) @db.Uuid
+  userAddress   String   @map("user_address")
+  prompt        String
+  proposal      Json?
+  txHash        String?  @map("tx_hash")
+  finalAnswer   String?  @map("final_answer")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([userAddress])
+  @@map("agent_queries")
 }

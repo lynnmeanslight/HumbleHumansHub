@@ -121,7 +121,6 @@ export default function NewArticlePage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
-          author: "Anonymous Writer",
           authorAddress: address,
           category,
           excerpt: textContent.trim().slice(0, 140) + "…",

@@ -280,3 +280,18 @@ body {
   border-top: 1px solid rgba(0, 0, 0, 0.08);
   margin: 24px 0;
 }
+
+/* PROSE CUSTOM (Agent Chat Markdown) */
+.prose-custom p { margin-bottom: 12px; }
+.prose-custom h1 { font-size: 20px; font-weight: bold; margin-top: 16px; margin-bottom: 8px; }
+.prose-custom h2 { font-size: 18px; font-weight: bold; margin-top: 14px; margin-bottom: 8px; }
+.prose-custom h3 { font-size: 16px; font-weight: bold; margin-top: 12px; margin-bottom: 6px; }
+.prose-custom strong { font-weight: 600; color: #1d1d1f; }
+.prose-custom em { font-style: italic; }
+.prose-custom ul { list-style-type: disc; padding-left: 20px; margin-bottom: 12px; }
+.prose-custom ol { list-style-type: decimal; padding-left: 20px; margin-bottom: 12px; }
+.prose-custom li { margin-bottom: 4px; }
+.prose-custom blockquote { border-left: 3px solid rgba(0, 113, 227, 0.4); padding-left: 12px; margin-left: 0; color: #6e6e73; font-style: italic; }
+.prose-custom a { color: #0071e3; text-decoration: underline; }
+.prose-custom a:hover { text-decoration: none; }
+.prose-custom code { background: rgba(0,0,0,0.05); padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }

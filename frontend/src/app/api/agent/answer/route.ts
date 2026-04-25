@@ -29,9 +29,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { prompt, txHash, slugs } = await req.json();
+    const { prompt, txHash, slugs, queryId } = await req.json();
 
-    if (!prompt || !txHash || !slugs || slugs.length === 0) {
+    if (!prompt || !txHash || !slugs || slugs.length === 0 || !queryId) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
     }
 
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     let searchPaidFound = false;
     for (const log of receipt.logs) {
-      if (log.address.toLowerCase() !== contracts.readerVault.toLowerCase()) continue;
+      if (log.address.toLowerCase() !== (contracts.readerVault || "").toLowerCase()) continue;
       try {
         const decoded = decodeEventLog({
           abi: [AGENT_SEARCH_PAID_EVENT],
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Generate Final Answer
-    const context = fullArticles.map(a => `Title: ${a.title}\nContent:\n${a.content}`).join("\n\n---\n\n");
+    const context = fullArticles.map(a => `Title: ${a.title}\nSlug: ${a.slug}\nContent:\n${a.content}`).join("\n\n---\n\n");
 
     const chat = ai.chats.create({
       model: "gemini-3-flash-preview",
@@ -89,12 +89,12 @@ export async function POST(req: NextRequest) {
         systemInstruction: `You are the "Hyper-Personalized Research Assistant" for HumbleHumansHub. 
 The user has paid a dynamic search fee to have you curate answers from premium articles.
 
-Here are the full texts of the 1 to 3 premium articles they paid you to analyze:
+Here are the full texts of the 1 to 5 premium articles they paid you to analyze:
 ${context}
 
 Your Task:
 1. Synthesize a brilliant, helpful answer to the user's prompt using ONLY the information provided in the articles above.
-2. Underneath your answer, you MUST provide "Read More" markdown links to the source articles so the user can read the full context if they choose. Format: [Read 'Article Title' for full context](/read/slug)
+2. Underneath your answer, you MUST provide "Read More" markdown links to the source articles so the user can read the full context if they choose. Format: [Read 'Article Title' for full context](/read/{Slug})
 
 Tone: Professional, highly intelligent, and helpful. You are justifying the fee they just paid you.`,
         temperature: 0.4,
@@ -103,6 +103,17 @@ Tone: Professional, highly intelligent, and helpful. You are justifying the fee 
 
     const response = await chat.sendMessage({ message: prompt });
     const finalAnswer = response.text || "I was unable to formulate an answer from the provided texts.";
+
+    // Save final answer and txHash to DB
+    const { prisma } = await import("@/lib/db");
+    try {
+      await prisma.agentQuery.update({
+        where: { id: queryId },
+        data: { txHash, finalAnswer }
+      });
+    } catch (e) {
+      console.error("Failed to update query record:", e);
+    }
 
     return NextResponse.json({ answer: finalAnswer });
 

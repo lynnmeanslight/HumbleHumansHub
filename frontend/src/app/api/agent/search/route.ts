@@ -8,14 +8,14 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
 // Tools for Gemini
 const selectArticlesTool = {
   name: "select_articles",
-  description: "Select up to 3 articles from the database that are most relevant to answering the user's query.",
+  description: "Select up to 5 articles from the database that are most relevant to answering the user's query.",
   parameters: {
     type: "object",
     properties: {
       slugs: {
         type: "array",
         items: { type: "string" },
-        description: "Array of slugs for the selected articles (max 3).",
+        description: "Array of slugs for the selected articles (max 5).",
       },
     },
     required: ["slugs"],
@@ -35,18 +35,26 @@ export async function POST(req: NextRequest) {
     }
 
     const articlesMeta = await fetchAllArticles();
-    const availableArticlesContext = articlesMeta.map(a => `Title: ${a.title}\nSlug: ${a.slug}\nExcerpt: ${a.excerpt}\nCategory: ${a.category}`).join("\n\n");
+    const availableArticlesContext = articlesMeta.map(a => `Title: ${a.title}\nAuthor: ${a.author_name}\nSlug: ${a.slug}\nExcerpt: ${a.excerpt}\nCategory: ${a.category}`).join("\n\n");
 
     const chat = ai.chats.create({
-      model: "gemini-2.5-flash", // Good for quick parsing
+      model: "gemini-3-flash-preview", 
       config: {
         systemInstruction: `You are an assistant that selects the most relevant articles for a user's query.
+Users may search by topic, title, or author name. 
+Be helpful and inclusive: if an article is even partially related, include it. 
+Try to find as many relevant articles as possible (up to 5).
+
 Here are the available articles in our database:
 ${availableArticlesContext}
 
-Based on the user's query, use the 'select_articles' tool to return an array of up to 3 'slugs' that best match the topic. If nothing matches, return an empty array.`,
-        tools: [{ functionDeclarations: [selectArticlesTool] }],
-        temperature: 0.1,
+Instructions:
+1. If the user asks for a specific author (e.g., "by Anonymous"), prioritize all articles by that author.
+2. If the user asks about a topic, find articles whose titles, categories, or excerpts match.
+3. Use the 'select_articles' tool to return an array of up to 5 'slugs'. 
+4. Only return an empty array if there is absolutely no connection between the query and the database.`,
+        tools: [{ functionDeclarations: [selectArticlesTool as any] }],
+        temperature: 0.2,
       }
     });
 
@@ -55,9 +63,9 @@ Based on the user's query, use the 'select_articles' tool to return an array of 
 
     let selectedSlugs: string[] = [];
     if (functionCalls && functionCalls.length > 0 && functionCalls[0].name === "select_articles") {
-        selectedSlugs = (functionCalls[0].args.slugs as string[]) || [];
-        // Enforce max 3
-        selectedSlugs = selectedSlugs.slice(0, 3);
+        selectedSlugs = (functionCalls[0].args?.slugs as string[]) || [];
+        // Enforce max 5
+        selectedSlugs = selectedSlugs.slice(0, 5);
     }
 
     if (selectedSlugs.length === 0) {
@@ -98,15 +106,28 @@ Based on the user's query, use the 'select_articles' tool to return an array of 
 
     const totalPriceAtomic = parseUnits(searchFee.toFixed(6), 18).toString();
 
-    return NextResponse.json({
-      proposal: {
-          articles: selectedArticles.map(a => ({ title: a.title, slug: a.slug, author: a.author, originalPrice: a.price })),
-          totalSearchFee: searchFee.toFixed(4),
-          totalPriceAtomic,
-          writers,
-          slugs,
-          authorSharesAtomic
+    const proposal = {
+        articles: selectedArticles.map(a => ({ title: a.title, slug: a.slug, authorAddress: a.author_address, originalPrice: a.price })),
+        totalSearchFee: searchFee.toFixed(4),
+        totalPriceAtomic,
+        writers,
+        slugs,
+        authorSharesAtomic
+    };
+
+    // Save to DB
+    const { prisma } = await import("@/lib/db");
+    const queryRecord = await prisma.agentQuery.create({
+      data: {
+        userAddress: req.headers.get("X-Reader-Address") || "0x0000000000000000000000000000000000000000",
+        prompt,
+        proposal: proposal as any
       }
+    });
+
+    return NextResponse.json({
+      queryId: queryRecord.id,
+      proposal
     });
 
   } catch (error) {

@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
 import { useReaderVault } from "@/hooks/useReaderVault";
 
 interface Message {
   role: "user" | "agent" | "system";
   text: string;
   proposal?: {
-    articles: { title: string; slug: string; author: string; originalPrice: number }[];
+    articles: { title: string; slug: string; authorAddress: string; originalPrice: number }[];
     totalSearchFee: string;
     totalPriceAtomic: string;
     writers: string[];
@@ -18,26 +18,86 @@ interface Message {
 }
 
 export function AgentChat() {
-  const { address, isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
+  const publicClient = usePublicClient();
   const { payForAgentSearch, isAgentSearchSubmitting } = useReaderVault();
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   
   // Track the current active proposal
   const [activeProposal, setActiveProposal] = useState<Message["proposal"] | null>(null);
   const [activePrompt, setActivePrompt] = useState<string>("");
+  const [activeQueryId, setActiveQueryId] = useState<string>("");
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+    }
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Load history from db
+  useEffect(() => {
+    if (!address) {
+      setMessages([{ 
+        role: "agent", 
+        text: "Hi! I am the AI Research Agent. What topic would you like me to research? \n\n*Note: Using the agent requires a base $0.001 USDC fee, plus the cost of any premium articles the agent reads to synthesize your answer.*" 
+      }]);
+      setIsHistoryLoading(false);
+      return;
+    }
+
+    const loadHistory = async () => {
+      try {
+        const res = await fetch(`/api/agent/history?address=${address}`);
+        if (!res.ok) throw new Error("Failed to load history");
+        const data = await res.json();
+        const queries = data.queries || [];
+
+        const loadedMessages: Message[] = [{ 
+          role: "agent", 
+          text: "Hi! I am the AI Research Agent. What topic would you like me to research? \n\n*Note: Using the agent requires a base $0.001 USDC fee, plus the cost of any premium articles the agent reads to synthesize your answer.*" 
+        }];
+
+        for (const q of queries) {
+          loadedMessages.push({ role: "user", text: q.prompt });
+          if (q.finalAnswer) {
+             loadedMessages.push({ role: "agent", text: q.finalAnswer });
+          } else if (q.proposal && !q.txHash) {
+             loadedMessages.push({ 
+               role: "agent", 
+               text: `I found ${q.proposal.articles?.length || 0} premium articles that match your query. To process them and generate a comprehensive answer, the dynamic search fee is $${q.proposal.totalSearchFee} USDC (50% of their total read price).`,
+               proposal: q.proposal 
+             });
+             // We only set the active proposal if it's the very last query in history
+             if (q === queries[queries.length - 1]) {
+               setActiveProposal(q.proposal);
+               setActivePrompt(q.prompt);
+               setActiveQueryId(q.id);
+             }
+          }
+        }
+        setMessages(loadedMessages);
+      } catch (err) {
+        console.error("Failed to load agent history:", err);
+      } finally {
+        setIsHistoryLoading(false);
+      }
+    };
+
+    loadHistory();
+  }, [address]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,11 +114,15 @@ export function AgentChat() {
     setIsLoading(true);
     setActiveProposal(null);
     setActivePrompt(userMessage);
+    setActiveQueryId("");
 
     try {
       const response = await fetch("/api/agent/search", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Reader-Address": address || "0x0000000000000000000000000000000000000000"
+        },
         body: JSON.stringify({ prompt: userMessage }),
       });
 
@@ -75,6 +139,7 @@ export function AgentChat() {
             }
           ]);
           setActiveProposal(data.proposal);
+          setActiveQueryId(data.queryId);
         } else {
            setMessages(prev => [...prev, { role: "agent", text: data.message || "I couldn't find anything relevant." }]);
         }
@@ -89,7 +154,7 @@ export function AgentChat() {
   };
 
   const handlePayAndGenerate = async () => {
-    if (!activeProposal || !activePrompt) return;
+    if (!activeProposal || !activePrompt || !activeQueryId) return;
     
     setIsLoading(true);
     setMessages(prev => [...prev, { role: "system", text: "Awaiting wallet confirmation..." }]);
@@ -102,12 +167,21 @@ export function AgentChat() {
         activeProposal.authorSharesAtomic.map(s => BigInt(s)),
         BigInt(activeProposal.totalPriceAtomic)
       );
-
-      setMessages(prev => [...prev, { role: "system", text: `Payment confirmed! Generating your answer... (TX: ${txHash?.slice(0,10)}...)` }]);
       
+      setMessages(prev => [...prev, { role: "system", text: `Transaction submitted! Waiting for network confirmation... (TX: ${txHash?.slice(0,10)}...)` }]);
+
       // Clear proposal so they can't click pay again
       const currentProposal = activeProposal;
+      const currentQueryId = activeQueryId;
       setActiveProposal(null); 
+      setActiveQueryId("");
+
+      // Wait for it to be mined
+      if (publicClient && txHash) {
+        await publicClient.waitForTransactionReceipt({ hash: txHash });
+      }
+
+      setMessages(prev => [...prev, { role: "system", text: `Payment confirmed! The AI is reading the articles and generating your answer...` }]);
 
       // 2. Fetch Final Answer
       const response = await fetch("/api/agent/answer", {
@@ -116,7 +190,8 @@ export function AgentChat() {
         body: JSON.stringify({ 
           prompt: activePrompt,
           txHash: txHash,
-          slugs: currentProposal.slugs
+          slugs: currentProposal.slugs,
+          queryId: currentQueryId
         }),
       });
 
@@ -173,7 +248,10 @@ export function AgentChat() {
         <div className="badge badge-accent text-[10px]">Powered by Gemini 3 Flash Preview</div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#fafafa]">
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#fafafa]"
+      >
         {messages.length === 0 && (
           <div className="text-center text-[#86868b] mt-10">
             <p className="mb-4">Ask me to research a topic. I will find relevant premium articles, calculate a dynamic search fee, and synthesize a complete answer for you. Authors get paid instantly.</p>
@@ -251,10 +329,14 @@ export function AgentChat() {
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} />
       </div>
 
       <div className="p-4 bg-white border-t border-black/[0.06]">
+        <div className="mb-2 text-center">
+          <p className="text-[11px] text-[#86868b] uppercase tracking-wide font-medium">
+            ⚡ Agent Search Fee: $0.001 base + Article Prices
+          </p>
+        </div>
         <form onSubmit={handleSubmit} className="relative">
           <input
             type="text"

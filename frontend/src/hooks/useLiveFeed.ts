@@ -84,8 +84,16 @@ export function useLiveFeed() {
   function formatAge(ageMs: number): string {
     const s = Math.floor(ageMs / 1000);
     if (s < 5) return "just now";
-    if (s < 60) return `${s}s ago`;
-    return `${Math.floor(s / 60)}m ago`;
+    if (s < 60) return `${s} secs ago`;
+    
+    const m = Math.floor(s / 60);
+    if (m < 60) return m === 1 ? "1 min ago" : `${m} mins ago`;
+    
+    const h = Math.floor(m / 60);
+    if (h < 24) return h === 1 ? "1 hour ago" : `${h} hours ago`;
+    
+    const d = Math.floor(h / 24);
+    return d === 1 ? "1 day ago" : `${d} days ago`;
   }
 
   const totalReads = useMemo(() => events.filter(e => e.eventType === "READ").length, [events]);

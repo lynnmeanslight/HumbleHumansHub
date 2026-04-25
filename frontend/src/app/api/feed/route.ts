@@ -11,7 +11,7 @@ const LIVE_FEED_SOURCE = process.env.LIVE_FEED_SOURCE || "auto";
 const GOLDSKY_SUBGRAPH_URL =
   process.env.GOLDSKY_SUBGRAPH_URL ||
   "https://api.goldsky.com/api/public/project_cmmhgxyrkhhn501w826759k1v/subgraphs/humblehumanshub/0.0.1/gn";
-const REPLAY_BLOCKS = BigInt(250);
+
 const POLL_INTERVAL_MS = 3000;
 const HEARTBEAT_INTERVAL_MS = 15000;
 
@@ -129,7 +129,7 @@ async function streamGoldskyFeed(
         reader: shortenAddress(event.reader),
         article: article?.title ?? event.slug,
         slug: event.slug,
-        writer: article?.author ?? shortenAddress(event.writer),
+        writer: shortenAddress(event.writer),
         amount,
         eventType: "READ",
         txHash: event.txHash,
@@ -164,7 +164,7 @@ async function streamRpcFeed(
         reader: shortenAddress(event.reader),
         article: article?.title ?? event.article_slug,
         slug: event.article_slug,
-        writer: article?.author ?? shortenAddress(event.writer_address),
+        writer: shortenAddress(event.writer_address),
         amount: event.amount,
         eventType: event.eventType || "READ",
         txHash: event.tx_hash,
@@ -206,7 +206,7 @@ async function streamRpcFeed(
         let amount = 0;
         let eventType = "READ";
         let reader = "";
-        let writer = "";
+        let writerAddressFull = "";
         let slug = "";
         let articleTitle = "";
 
@@ -216,7 +216,7 @@ async function streamRpcFeed(
             reader = args.reader;
             amount = Number(formatUnits(args.totalFee, 18));
             eventType = "AGENT_SEARCH";
-            writer = "Platform"; // Agent searches benefit multiple writers and platform
+            writerAddressFull = "Platform"; // Agent searches benefit multiple writers and platform
             slug = "agent-search";
             articleTitle = "AI Research Query";
         } else {
@@ -225,7 +225,7 @@ async function streamRpcFeed(
             const article = await fetchArticle(args.slug);
             amount = Number(formatUnits(args.usdcPaid, 18));
             reader = args.reader;
-            writer = article?.author ?? shortenAddress(args.writer);
+            writerAddressFull = args.writer;
             slug = args.slug;
             articleTitle = article?.title ?? args.slug;
 
@@ -243,7 +243,7 @@ async function streamRpcFeed(
             logIndex: Number(log.logIndex ?? 0),
             blockNumber: BigInt(log.blockNumber),
             reader: reader,
-            writerAddress: writer,
+            writerAddress: writerAddressFull,
             articleSlug: slug,
             amount: amount,
             eventType: eventType,
@@ -257,7 +257,7 @@ async function streamRpcFeed(
           reader: shortenAddress(reader),
           article: articleTitle,
           slug: slug,
-          writer: writer,
+          writer: shortenAddress(writerAddressFull),
           amount,
           eventType,
           txHash: log.transactionHash,

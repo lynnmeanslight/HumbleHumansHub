@@ -119,6 +119,11 @@ export async function verifyPayment(
   // ─── Previous Payer Bypass Check ─────────────────────────────────────────
   const readerAddress = request.headers.get("X-Reader-Address");
   if (readerAddress) {
+    // Author Bypass Check
+    if (readerAddress.toLowerCase() === writerAddress.toLowerCase()) {
+      return { valid: true, payer: readerAddress };
+    }
+
     // Previous payment check
     const alreadyPaid = await hasPaidForArticle(readerAddress, expectedSlug);
     if (alreadyPaid) {

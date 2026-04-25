@@ -1,6 +1,7 @@
 import { ConnectWallet } from "@/components/ConnectWallet";
 import { PaymentGate } from "@/components/PaymentGate";
 import { fetchArticle } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -78,12 +79,47 @@ export default async function ArticlePage({ params }: { params: { slug: string }
     );
   }
 
-  const author = article.author;
   const category = article.category;
   const readTime = article.read_time ?? article.readTime ?? "5 min";
-  const date = article.created_at?.split("T")[0] ?? article.date ?? "";
   const price = article.price ?? 0.001;
   const writerAddress = (article.author_address ?? article.authorAddress ?? "0x0000000000000000000000000000000000000000") as `0x${string}`;
+
+  // Fetch author profile
+  let displayAuthor = "Anonymous Writer";
+  if (writerAddress && writerAddress !== "0x0000000000000000000000000000000000000000") {
+    try {
+      const userProfile = await prisma.user.findFirst({
+        where: { 
+          address: { 
+            equals: writerAddress, 
+            mode: "insensitive" 
+          } 
+        },
+        select: { displayName: true, username: true }
+      });
+      if (userProfile?.displayName) {
+        displayAuthor = userProfile.displayName;
+      } else if (userProfile?.username) {
+        displayAuthor = `@${userProfile.username}`;
+      } else {
+         displayAuthor = `${writerAddress.slice(0, 6)}...${writerAddress.slice(-4)}`;
+      }
+    } catch {
+      // Ignore DB errors
+    }
+  }
+
+  // Format date
+  let date = "";
+  const rawDate = article.created_at || article.date;
+  if (rawDate) {
+    try {
+      const d = new Date(rawDate);
+      date = d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    } catch {
+      date = rawDate.split("T")[0];
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -104,11 +140,10 @@ export default async function ArticlePage({ params }: { params: { slug: string }
         <div className="max-w-[680px] mx-auto px-6 py-14 md:py-20 text-center">
           <div className="flex items-center justify-center gap-2.5 mb-4">
             <span className="badge badge-accent text-[11px]">{category}</span>
-            <span className="text-[12px] text-[#86868b]">{readTime}</span>
-            {date && <span className="text-[12px] text-[#86868b]">{date}</span>}
+            <span className="text-[12px] text-[#86868b]">{date} • {readTime}</span>
           </div>
           <h1 className="text-heading mb-4">{article.title}</h1>
-          <p className="text-[15px] text-[#6e6e73]">{author}</p>
+          <p className="text-[15px] text-[#6e6e73]">by {displayAuthor}</p>
         </div>
       </section>
 
@@ -116,17 +151,11 @@ export default async function ArticlePage({ params }: { params: { slug: string }
         <div className="max-w-[680px] mx-auto px-6 py-10 md:py-14">
           <PaymentGate 
             articleTitle={article.title} 
-            authorName={author} 
+            authorName={displayAuthor} 
             price={`$${price}`} 
             slug={slug} 
             writerAddress={writerAddress} 
           />
-          
-          <div className="mt-10 h-px bg-black/[0.06]" />
-          <div className="mt-4 flex items-center gap-2.5">
-            <span className="text-[13px] text-[#1a8917] font-medium">✓ Settled</span>
-            <span className="text-[12px] text-[#86868b]">${price.toFixed(3)} {author}</span>
-          </div>
         </div>
       </section>
     </div>

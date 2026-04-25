@@ -3,7 +3,7 @@ import { saveArticle } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
-  const { title, author, authorAddress, category, excerpt, readTime, content } = body;
+  const { title, authorAddress, category, excerpt, readTime, content } = body;
 
   if (!title?.trim() || !content?.trim()) {
     return NextResponse.json({ error: "title and content are required" }, { status: 400 });
@@ -24,7 +24,6 @@ export async function POST(request: NextRequest) {
     await saveArticle({
       slug,
       title: title.trim(),
-      author: author || "Anonymous",
       author_address: authorAddress || "0x0000000000000000000000000000000000000000",
       category: category || "General",
       excerpt: excerpt?.trim() || content.replace(/^#+.+\n/gm, "").replace(/\*\*/g, "").trim().slice(0, 140) + "…",
