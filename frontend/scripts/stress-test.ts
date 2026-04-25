@@ -19,6 +19,7 @@ const READER_VAULT_ABI = [
       { name: "reader", type: "address" },
       { name: "writer", type: "address" },
       { name: "slug", type: "string" },
+      { name: "price", type: "uint256" },
     ],
     outputs: [],
     stateMutability: "nonpayable",
@@ -93,7 +94,7 @@ async function main() {
       address: readerVaultAddress,
       abi: READER_VAULT_ABI,
       functionName: "payForRead",
-      args: [account.address, article.writer, article.slug],
+      args: [account.address, article.writer, article.slug, parseUnits("0.001", 18)],
     });
 
     hashes.push(tx);

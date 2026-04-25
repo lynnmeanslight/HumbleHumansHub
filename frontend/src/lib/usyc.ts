@@ -7,7 +7,7 @@
  * Non-US persons only; US users receive USDC directly (no staking).
  */
 
-import { createPublicClient, createWalletClient, http, parseUnits, formatUnits } from "viem";
+import { createPublicClient, http, parseUnits, formatUnits } from "viem";
 import { arcTestnet, contracts } from "./arc";
 
 const TELLER_ABI = [

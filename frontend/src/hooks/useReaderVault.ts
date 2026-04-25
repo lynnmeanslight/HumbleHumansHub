@@ -1,7 +1,10 @@
 "use client";
 
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId, useSwitchChain } from "wagmi";
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useAccount, useSwitchChain } from "wagmi";
 import { contracts, PAYMENT, arcTestnet, ensureArcWalletChain, waitForArcWalletChain } from "@/lib/arc";
+
+const TXPOOL_RETRY_ATTEMPTS = 3;
+const TXPOOL_RETRY_DELAY_MS = 1500;
 
 const READER_VAULT_ABI = [
   {
@@ -25,6 +28,31 @@ const READER_VAULT_ABI = [
       { name: "reader", type: "address" },
       { name: "writer", type: "address" },
       { name: "slug", type: "string" },
+      { name: "price", type: "uint256" },
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    name: "payForComment",
+    type: "function",
+    inputs: [
+      { name: "reader", type: "address" },
+      { name: "writer", type: "address" },
+      { name: "slug", type: "string" },
+      { name: "price", type: "uint256" },
+      { name: "commentHash", type: "string" }
+    ],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    name: "payForClap",
+    type: "function",
+    inputs: [
+      { name: "reader", type: "address" },
+      { name: "writer", type: "address" },
+      { name: "slug", type: "string" }
     ],
     outputs: [],
     stateMutability: "nonpayable",
@@ -55,6 +83,23 @@ const READER_VAULT_ABI = [
     stateMutability: "view",
   },
 ] as const;
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function isTxpoolFullError(error: unknown) {
+  if (!(error instanceof Error)) return false;
+  const message = error.message.toLowerCase();
+  return message.includes("txpool is full") || message.includes("tx pool is full");
+}
+
+function toFriendlyWriteError(error: unknown) {
+  if (isTxpoolFullError(error)) {
+    return new Error("The Arc RPC is congested right now. We retried automatically, but the transaction pool is still full. Wait a few seconds and try again.");
+  }
+  return error instanceof Error ? error : new Error("Transaction failed");
+}
 
 export function useReaderVault() {
   const { address, chainId: walletChainId } = useAccount();
@@ -101,6 +146,7 @@ export function useReaderVault() {
   });
 
   async function deposit(amount: bigint) {
+    console.log(address);
     if (!vaultAddress) throw new Error("ReaderVault address not configured");
     if (!address) throw new Error("Wallet not connected");
     if (!isOnArc) await switchToArcAsync();
@@ -118,7 +164,7 @@ export function useReaderVault() {
   const {
     writeContractAsync: writePayForRead,
     data: payTxHash,
-    isPending: isPaying,
+    isPending: isPaySubmitting,
     error: payWriteError,
   } = useWriteContract();
   const {
@@ -130,18 +176,83 @@ export function useReaderVault() {
     chainId: arcTestnet.id,
   });
 
-  async function payForRead(writerAddress: `0x${string}`, slug: string) {
+  async function payForRead(writerAddress: `0x${string}`, slug: string, price: bigint) {
     if (!vaultAddress) throw new Error("ReaderVault address not configured");
     if (!address) throw new Error("Wallet not connected");
     if (!isOnArc) await switchToArcAsync();
-    await writePayForRead({
-      account: address,
-      address: vaultAddress,
-      abi: READER_VAULT_ABI,
-      functionName: "payForRead",
-      args: [address, writerAddress, slug],
-      chainId: arcTestnet.id,
-    });
+
+    for (let attempt = 1; attempt <= TXPOOL_RETRY_ATTEMPTS; attempt += 1) {
+      try {
+        await writePayForRead({
+          account: address,
+          address: vaultAddress,
+          abi: READER_VAULT_ABI,
+          functionName: "payForRead",
+          args: [address, writerAddress, slug, price],
+          chainId: arcTestnet.id,
+        });
+        return;
+      } catch (error) {
+        if (!isTxpoolFullError(error) || attempt === TXPOOL_RETRY_ATTEMPTS) {
+          throw toFriendlyWriteError(error);
+        }
+        await sleep(TXPOOL_RETRY_DELAY_MS * attempt);
+      }
+    }
+  }
+
+  // ─── Pay for comment ───────────────────────────────────────────────────────
+  const { writeContractAsync: writePayForComment, isPending: isCommentSubmitting } = useWriteContract();
+  async function payForComment(writerAddress: `0x${string}`, slug: string, price: bigint, commentHash: string) {
+    if (!vaultAddress) throw new Error("ReaderVault address not configured");
+    if (!address) throw new Error("Wallet not connected");
+    if (!isOnArc) await switchToArcAsync();
+
+    for (let attempt = 1; attempt <= TXPOOL_RETRY_ATTEMPTS; attempt += 1) {
+      try {
+        const txHash = await writePayForComment({
+          account: address,
+          address: vaultAddress,
+          abi: READER_VAULT_ABI,
+          functionName: "payForComment",
+          args: [address, writerAddress, slug, price, commentHash],
+          chainId: arcTestnet.id,
+        });
+        return txHash;
+      } catch (error) {
+        if (!isTxpoolFullError(error) || attempt === TXPOOL_RETRY_ATTEMPTS) {
+          throw toFriendlyWriteError(error);
+        }
+        await sleep(TXPOOL_RETRY_DELAY_MS * attempt);
+      }
+    }
+  }
+
+  // ─── Pay for clap ──────────────────────────────────────────────────────────
+  const { writeContractAsync: writePayForClap, isPending: isClapSubmitting } = useWriteContract();
+  async function payForClap(writerAddress: `0x${string}`, slug: string) {
+    if (!vaultAddress) throw new Error("ReaderVault address not configured");
+    if (!address) throw new Error("Wallet not connected");
+    if (!isOnArc) await switchToArcAsync();
+
+    for (let attempt = 1; attempt <= TXPOOL_RETRY_ATTEMPTS; attempt += 1) {
+      try {
+        const txHash = await writePayForClap({
+          account: address,
+          address: vaultAddress,
+          abi: READER_VAULT_ABI,
+          functionName: "payForClap",
+          args: [address, writerAddress, slug],
+          chainId: arcTestnet.id,
+        });
+        return txHash;
+      } catch (error) {
+        if (!isTxpoolFullError(error) || attempt === TXPOOL_RETRY_ATTEMPTS) {
+          throw toFriendlyWriteError(error);
+        }
+        await sleep(TXPOOL_RETRY_DELAY_MS * attempt);
+      }
+    }
   }
 
   // ─── Withdraw ──────────────────────────────────────────────────────────────
@@ -156,7 +267,6 @@ export function useReaderVault() {
     if (!address) throw new Error("Wallet not connected");
     if (!isOnArc) await switchToArcAsync();
     await writeWithdraw({
-      account: address,
       address: vaultAddress,
       abi: READER_VAULT_ABI,
       functionName: "withdraw",
@@ -178,10 +288,18 @@ export function useReaderVault() {
     depositError: depositWriteError ?? depositReceiptError,
 
     payForRead,
-    isPaying: isPaying || isPayConfirming,
+    isPaying: isPaySubmitting || isPayConfirming,
+    isPaySubmitting,
+    isPayConfirming,
     isPaySuccess,
     payTxHash,
     payError: payWriteError ?? payReceiptError,
+
+    payForComment,
+    isCommentSubmitting,
+
+    payForClap,
+    isClapSubmitting,
 
     withdraw,
     isWithdrawing: isWithdrawing || isWithdrawConfirming,

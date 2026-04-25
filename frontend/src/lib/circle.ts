@@ -9,8 +9,7 @@
  */
 
 const CIRCLE_API_BASE = "https://api.circle.com/v1";
-const CIRCLE_API_KEY = process.env.CIRCLE_API_KEY;
-const CIRCLE_ENTITY_SECRET = process.env.CIRCLE_ENTITY_SECRET;
+const CIRCLE_API_KEY = process.env.CIRCLE_API_KEY || "";
 
 if (!CIRCLE_API_KEY && typeof window === "undefined") {
   console.warn("[Circle] CIRCLE_API_KEY not set — API calls will fail");

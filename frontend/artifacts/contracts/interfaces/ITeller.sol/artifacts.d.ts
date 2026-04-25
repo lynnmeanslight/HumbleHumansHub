@@ -6,16 +6,21 @@
 import "hardhat/types/artifacts";
 import type { GetContractReturnType } from "@nomicfoundation/hardhat-viem/types";
 
+import { IERC20$Type } from "./IERC20";
 import { ITeller$Type } from "./ITeller";
 
 declare module "hardhat/types/artifacts" {
   interface ArtifactsMap {
+    ["IERC20"]: IERC20$Type;
     ["ITeller"]: ITeller$Type;
+    ["contracts/interfaces/ITeller.sol:IERC20"]: IERC20$Type;
     ["contracts/interfaces/ITeller.sol:ITeller"]: ITeller$Type;
   }
 
   interface ContractTypesMap {
+    ["IERC20"]: GetContractReturnType<IERC20$Type["abi"]>;
     ["ITeller"]: GetContractReturnType<ITeller$Type["abi"]>;
+    ["contracts/interfaces/ITeller.sol:IERC20"]: GetContractReturnType<IERC20$Type["abi"]>;
     ["contracts/interfaces/ITeller.sol:ITeller"]: GetContractReturnType<ITeller$Type["abi"]>;
   }
 }

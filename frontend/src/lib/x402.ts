@@ -197,7 +197,7 @@ export function withX402(
   slug: string
 ) {
   return async (request: NextRequest): Promise<NextResponse> => {
-    const { valid, payer, error } = await verifyPayment(request, slug);
+    const { valid, payer } = await verifyPayment(request, slug);
 
     if (!valid) {
       return paymentRequired(slug, writerAddress);

@@ -1,0 +1,15 @@
+{
+  "name": "humblehumanshub-subgraph",
+  "private": true,
+  "scripts": {
+    "codegen": "graph codegen subgraph.yaml",
+    "build": "graph build subgraph.yaml",
+    "deploy": "goldsky subgraph deploy humblehumanshub/0.0.1 --path ."
+  },
+  "devDependencies": {
+    "@graphprotocol/graph-cli": "^0.98.1"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-ts": "^0.38.2"
+  }
+}

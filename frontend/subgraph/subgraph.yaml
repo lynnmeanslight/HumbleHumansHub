@@ -1,0 +1,59 @@
+specVersion: 1.0.0
+indexerHints:
+  prune: auto
+schema:
+  file: ./schema.graphql
+dataSources:
+  - kind: ethereum
+    name: ReaderVault
+    network: arc-testnet
+    source:
+      address: "0xd14c4fA78146cF86147c51d2be7006cF73A83CE4"
+      abi: ReaderVault
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - ReaderAccount
+        - ArticleStats
+        - ArticleRead
+        - ReaderDeposit
+        - ReaderWithdrawal
+      abis:
+        - name: ReaderVault
+          file: ./abis/ReaderVault.json
+      eventHandlers:
+        - event: ArticleRead(indexed address,indexed address,string,uint256)
+          handler: handleArticleRead
+        - event: Deposited(indexed address,uint256,uint256)
+          handler: handleDeposited
+        - event: Withdrawn(indexed address,uint256)
+          handler: handleWithdrawn
+      file: ./src/reader-vault.ts
+  - kind: ethereum
+    name: WriterVault
+    network: arc-testnet
+    source:
+      address: "0x1F65b6d82a18227e1d830a6FA83e8AD29cc679F4"
+      abi: WriterVault
+      startBlock: 0
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      entities:
+        - WriterAccount
+        - ArticleStats
+        - WriterEarning
+        - WriterWithdrawal
+      abis:
+        - name: WriterVault
+          file: ./abis/WriterVault.json
+      eventHandlers:
+        - event: EarningsReceived(indexed address,uint256,uint256,string)
+          handler: handleEarningsReceived
+        - event: EarningsWithdrawn(indexed address,uint256)
+          handler: handleEarningsWithdrawn
+      file: ./src/writer-vault.ts

@@ -27,10 +27,12 @@ export interface ReaderVaultInterface extends Interface {
   getFunction(
     nameOrSignature:
       | "FLOAT_AMOUNT"
-      | "PRICE_PER_READ"
+      | "PLATFORM_FEE"
       | "balanceOf"
       | "deposit"
       | "owner"
+      | "payForClap"
+      | "payForComment"
       | "payForRead"
       | "teller"
       | "usdcFloat"
@@ -41,7 +43,12 @@ export interface ReaderVaultInterface extends Interface {
   ): FunctionFragment;
 
   getEvent(
-    nameOrSignatureOrTopic: "ArticleRead" | "Deposited" | "Withdrawn"
+    nameOrSignatureOrTopic:
+      | "ArticleRead"
+      | "ClapPaid"
+      | "CommentPaid"
+      | "Deposited"
+      | "Withdrawn"
   ): EventFragment;
 
   encodeFunctionData(
@@ -49,7 +56,7 @@ export interface ReaderVaultInterface extends Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "PRICE_PER_READ",
+    functionFragment: "PLATFORM_FEE",
     values?: undefined
   ): string;
   encodeFunctionData(
@@ -59,8 +66,16 @@ export interface ReaderVaultInterface extends Interface {
   encodeFunctionData(functionFragment: "deposit", values?: undefined): string;
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "payForRead",
+    functionFragment: "payForClap",
     values: [AddressLike, AddressLike, string]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "payForComment",
+    values: [AddressLike, AddressLike, string, BigNumberish, string]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "payForRead",
+    values: [AddressLike, AddressLike, string, BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "teller", values?: undefined): string;
   encodeFunctionData(
@@ -83,12 +98,17 @@ export interface ReaderVaultInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "PRICE_PER_READ",
+    functionFragment: "PLATFORM_FEE",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "deposit", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "payForClap", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "payForComment",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "payForRead", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "teller", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "usdcFloat", data: BytesLike): Result;
@@ -119,6 +139,59 @@ export namespace ArticleReadEvent {
     writer: string;
     slug: string;
     usdcPaid: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace ClapPaidEvent {
+  export type InputTuple = [
+    reader: AddressLike,
+    writer: AddressLike,
+    slug: string,
+    usdcPaid: BigNumberish
+  ];
+  export type OutputTuple = [
+    reader: string,
+    writer: string,
+    slug: string,
+    usdcPaid: bigint
+  ];
+  export interface OutputObject {
+    reader: string;
+    writer: string;
+    slug: string;
+    usdcPaid: bigint;
+  }
+  export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
+  export type Filter = TypedDeferredTopicFilter<Event>;
+  export type Log = TypedEventLog<Event>;
+  export type LogDescription = TypedLogDescription<Event>;
+}
+
+export namespace CommentPaidEvent {
+  export type InputTuple = [
+    reader: AddressLike,
+    writer: AddressLike,
+    slug: string,
+    usdcPaid: BigNumberish,
+    commentHash: string
+  ];
+  export type OutputTuple = [
+    reader: string,
+    writer: string,
+    slug: string,
+    usdcPaid: bigint,
+    commentHash: string
+  ];
+  export interface OutputObject {
+    reader: string;
+    writer: string;
+    slug: string;
+    usdcPaid: bigint;
+    commentHash: string;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -206,7 +279,7 @@ export interface ReaderVault extends BaseContract {
 
   FLOAT_AMOUNT: TypedContractMethod<[], [bigint], "view">;
 
-  PRICE_PER_READ: TypedContractMethod<[], [bigint], "view">;
+  PLATFORM_FEE: TypedContractMethod<[], [bigint], "view">;
 
   balanceOf: TypedContractMethod<
     [reader: AddressLike],
@@ -224,8 +297,31 @@ export interface ReaderVault extends BaseContract {
 
   owner: TypedContractMethod<[], [string], "view">;
 
-  payForRead: TypedContractMethod<
+  payForClap: TypedContractMethod<
     [reader: AddressLike, writer: AddressLike, slug: string],
+    [void],
+    "nonpayable"
+  >;
+
+  payForComment: TypedContractMethod<
+    [
+      reader: AddressLike,
+      writer: AddressLike,
+      slug: string,
+      price: BigNumberish,
+      commentHash: string
+    ],
+    [void],
+    "nonpayable"
+  >;
+
+  payForRead: TypedContractMethod<
+    [
+      reader: AddressLike,
+      writer: AddressLike,
+      slug: string,
+      price: BigNumberish
+    ],
     [void],
     "nonpayable"
   >;
@@ -250,7 +346,7 @@ export interface ReaderVault extends BaseContract {
     nameOrSignature: "FLOAT_AMOUNT"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
-    nameOrSignature: "PRICE_PER_READ"
+    nameOrSignature: "PLATFORM_FEE"
   ): TypedContractMethod<[], [bigint], "view">;
   getFunction(
     nameOrSignature: "balanceOf"
@@ -272,9 +368,34 @@ export interface ReaderVault extends BaseContract {
     nameOrSignature: "owner"
   ): TypedContractMethod<[], [string], "view">;
   getFunction(
-    nameOrSignature: "payForRead"
+    nameOrSignature: "payForClap"
   ): TypedContractMethod<
     [reader: AddressLike, writer: AddressLike, slug: string],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "payForComment"
+  ): TypedContractMethod<
+    [
+      reader: AddressLike,
+      writer: AddressLike,
+      slug: string,
+      price: BigNumberish,
+      commentHash: string
+    ],
+    [void],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "payForRead"
+  ): TypedContractMethod<
+    [
+      reader: AddressLike,
+      writer: AddressLike,
+      slug: string,
+      price: BigNumberish
+    ],
     [void],
     "nonpayable"
   >;
@@ -305,6 +426,20 @@ export interface ReaderVault extends BaseContract {
     ArticleReadEvent.OutputObject
   >;
   getEvent(
+    key: "ClapPaid"
+  ): TypedContractEvent<
+    ClapPaidEvent.InputTuple,
+    ClapPaidEvent.OutputTuple,
+    ClapPaidEvent.OutputObject
+  >;
+  getEvent(
+    key: "CommentPaid"
+  ): TypedContractEvent<
+    CommentPaidEvent.InputTuple,
+    CommentPaidEvent.OutputTuple,
+    CommentPaidEvent.OutputObject
+  >;
+  getEvent(
     key: "Deposited"
   ): TypedContractEvent<
     DepositedEvent.InputTuple,
@@ -329,6 +464,28 @@ export interface ReaderVault extends BaseContract {
       ArticleReadEvent.InputTuple,
       ArticleReadEvent.OutputTuple,
       ArticleReadEvent.OutputObject
+    >;
+
+    "ClapPaid(address,address,string,uint256)": TypedContractEvent<
+      ClapPaidEvent.InputTuple,
+      ClapPaidEvent.OutputTuple,
+      ClapPaidEvent.OutputObject
+    >;
+    ClapPaid: TypedContractEvent<
+      ClapPaidEvent.InputTuple,
+      ClapPaidEvent.OutputTuple,
+      ClapPaidEvent.OutputObject
+    >;
+
+    "CommentPaid(address,address,string,uint256,string)": TypedContractEvent<
+      CommentPaidEvent.InputTuple,
+      CommentPaidEvent.OutputTuple,
+      CommentPaidEvent.OutputObject
+    >;
+    CommentPaid: TypedContractEvent<
+      CommentPaidEvent.InputTuple,
+      CommentPaidEvent.OutputTuple,
+      CommentPaidEvent.OutputObject
     >;
 
     "Deposited(address,uint256,uint256)": TypedContractEvent<

@@ -27,6 +27,19 @@ export interface DbArticle {
   created_at: string;
 }
 
+export interface DbArticleReadEvent {
+  id: string;
+  tx_hash: string;
+  log_index: number;
+  block_number: bigint;
+  reader: string;
+  writer_address: string;
+  article_slug: string;
+  amount: number;
+  observed_at: string;
+  created_at: string;
+}
+
 // ─── Queries ──────────────────────────────────────────────────────────────────
 
 /** Save a new article to PostgreSQL via Prisma */
@@ -116,6 +129,27 @@ export async function incrementReads(slug: string): Promise<void> {
       }
     }
   });
+}
+
+/** Fetch recent mirrored ArticleRead events written by Goldsky Mirror. */
+export async function fetchRecentArticleReadEvents(limit = 50): Promise<DbArticleReadEvent[]> {
+  const data = await prisma.articleReadEvent.findMany({
+    take: limit,
+    orderBy: { observedAt: "desc" },
+  });
+
+  return data.map((item) => ({
+    id: item.id,
+    tx_hash: item.txHash,
+    log_index: item.logIndex,
+    block_number: item.blockNumber,
+    reader: item.reader,
+    writer_address: item.writerAddress,
+    article_slug: item.articleSlug,
+    amount: Number(item.amount),
+    observed_at: item.observedAt.toISOString(),
+    created_at: item.createdAt.toISOString(),
+  }));
 }
 
 // ─── User helpers ─────────────────────────────────────────────────────────────

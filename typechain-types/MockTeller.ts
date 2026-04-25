@@ -26,63 +26,94 @@ import type {
 export interface MockTellerInterface extends Interface {
   getFunction(
     nameOrSignature:
-      | "exchangeRate"
+      | "ASSET"
+      | "asset"
+      | "convertToAssets"
+      | "convertToShares"
+      | "deposit"
+      | "previewDeposit"
+      | "previewRedeem"
       | "redeem"
-      | "subscribe"
-      | "usdcToUsyc"
       | "usycBalance"
-      | "usycToUsdc"
   ): FunctionFragment;
 
-  getEvent(nameOrSignatureOrTopic: "Redeemed" | "Subscribed"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "Deposit" | "Withdraw"): EventFragment;
 
+  encodeFunctionData(functionFragment: "ASSET", values?: undefined): string;
+  encodeFunctionData(functionFragment: "asset", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "exchangeRate",
-    values?: undefined
+    functionFragment: "convertToAssets",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "convertToShares",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "deposit",
+    values: [BigNumberish, AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "previewDeposit",
+    values: [BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "previewRedeem",
+    values: [BigNumberish]
   ): string;
   encodeFunctionData(
     functionFragment: "redeem",
-    values: [BigNumberish]
-  ): string;
-  encodeFunctionData(functionFragment: "subscribe", values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: "usdcToUsyc",
-    values: [BigNumberish]
+    values: [BigNumberish, AddressLike, AddressLike]
   ): string;
   encodeFunctionData(
     functionFragment: "usycBalance",
     values: [AddressLike]
   ): string;
-  encodeFunctionData(
-    functionFragment: "usycToUsdc",
-    values: [BigNumberish]
-  ): string;
 
+  decodeFunctionResult(functionFragment: "ASSET", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "asset", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "exchangeRate",
+    functionFragment: "convertToAssets",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "convertToShares",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "deposit", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "previewDeposit",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "previewRedeem",
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "redeem", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "subscribe", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "usdcToUsyc", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "usycBalance",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "usycToUsdc", data: BytesLike): Result;
 }
 
-export namespace RedeemedEvent {
+export namespace DepositEvent {
   export type InputTuple = [
-    caller: AddressLike,
-    usycIn: BigNumberish,
-    usdcOut: BigNumberish
+    sender: AddressLike,
+    owner: AddressLike,
+    assets: BigNumberish,
+    shares: BigNumberish
   ];
-  export type OutputTuple = [caller: string, usycIn: bigint, usdcOut: bigint];
+  export type OutputTuple = [
+    sender: string,
+    owner: string,
+    assets: bigint,
+    shares: bigint
+  ];
   export interface OutputObject {
-    caller: string;
-    usycIn: bigint;
-    usdcOut: bigint;
+    sender: string;
+    owner: string;
+    assets: bigint;
+    shares: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -90,17 +121,27 @@ export namespace RedeemedEvent {
   export type LogDescription = TypedLogDescription<Event>;
 }
 
-export namespace SubscribedEvent {
+export namespace WithdrawEvent {
   export type InputTuple = [
-    caller: AddressLike,
-    usdcIn: BigNumberish,
-    usycOut: BigNumberish
+    sender: AddressLike,
+    receiver: AddressLike,
+    owner: AddressLike,
+    assets: BigNumberish,
+    shares: BigNumberish
   ];
-  export type OutputTuple = [caller: string, usdcIn: bigint, usycOut: bigint];
+  export type OutputTuple = [
+    sender: string,
+    receiver: string,
+    owner: string,
+    assets: bigint,
+    shares: bigint
+  ];
   export interface OutputObject {
-    caller: string;
-    usdcIn: bigint;
-    usycOut: bigint;
+    sender: string;
+    receiver: string;
+    owner: string;
+    assets: bigint;
+    shares: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -151,81 +192,116 @@ export interface MockTeller extends BaseContract {
     event?: TCEvent
   ): Promise<this>;
 
-  exchangeRate: TypedContractMethod<[], [bigint], "view">;
+  ASSET: TypedContractMethod<[], [string], "view">;
 
-  redeem: TypedContractMethod<
-    [usycAmount: BigNumberish],
+  asset: TypedContractMethod<[], [string], "view">;
+
+  convertToAssets: TypedContractMethod<
+    [shares: BigNumberish],
+    [bigint],
+    "view"
+  >;
+
+  convertToShares: TypedContractMethod<
+    [assets: BigNumberish],
+    [bigint],
+    "view"
+  >;
+
+  deposit: TypedContractMethod<
+    [assets: BigNumberish, receiver: AddressLike],
     [bigint],
     "nonpayable"
   >;
 
-  subscribe: TypedContractMethod<[], [bigint], "payable">;
+  previewDeposit: TypedContractMethod<[assets: BigNumberish], [bigint], "view">;
 
-  usdcToUsyc: TypedContractMethod<[usdcAmount: BigNumberish], [bigint], "view">;
+  previewRedeem: TypedContractMethod<[shares: BigNumberish], [bigint], "view">;
+
+  redeem: TypedContractMethod<
+    [shares: BigNumberish, receiver: AddressLike, owner: AddressLike],
+    [bigint],
+    "nonpayable"
+  >;
 
   usycBalance: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
-
-  usycToUsdc: TypedContractMethod<[usycAmount: BigNumberish], [bigint], "view">;
 
   getFunction<T extends ContractMethod = ContractMethod>(
     key: string | FunctionFragment
   ): T;
 
   getFunction(
-    nameOrSignature: "exchangeRate"
-  ): TypedContractMethod<[], [bigint], "view">;
+    nameOrSignature: "ASSET"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "asset"
+  ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "convertToAssets"
+  ): TypedContractMethod<[shares: BigNumberish], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "convertToShares"
+  ): TypedContractMethod<[assets: BigNumberish], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "deposit"
+  ): TypedContractMethod<
+    [assets: BigNumberish, receiver: AddressLike],
+    [bigint],
+    "nonpayable"
+  >;
+  getFunction(
+    nameOrSignature: "previewDeposit"
+  ): TypedContractMethod<[assets: BigNumberish], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "previewRedeem"
+  ): TypedContractMethod<[shares: BigNumberish], [bigint], "view">;
   getFunction(
     nameOrSignature: "redeem"
-  ): TypedContractMethod<[usycAmount: BigNumberish], [bigint], "nonpayable">;
-  getFunction(
-    nameOrSignature: "subscribe"
-  ): TypedContractMethod<[], [bigint], "payable">;
-  getFunction(
-    nameOrSignature: "usdcToUsyc"
-  ): TypedContractMethod<[usdcAmount: BigNumberish], [bigint], "view">;
+  ): TypedContractMethod<
+    [shares: BigNumberish, receiver: AddressLike, owner: AddressLike],
+    [bigint],
+    "nonpayable"
+  >;
   getFunction(
     nameOrSignature: "usycBalance"
   ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
-  getFunction(
-    nameOrSignature: "usycToUsdc"
-  ): TypedContractMethod<[usycAmount: BigNumberish], [bigint], "view">;
 
   getEvent(
-    key: "Redeemed"
+    key: "Deposit"
   ): TypedContractEvent<
-    RedeemedEvent.InputTuple,
-    RedeemedEvent.OutputTuple,
-    RedeemedEvent.OutputObject
+    DepositEvent.InputTuple,
+    DepositEvent.OutputTuple,
+    DepositEvent.OutputObject
   >;
   getEvent(
-    key: "Subscribed"
+    key: "Withdraw"
   ): TypedContractEvent<
-    SubscribedEvent.InputTuple,
-    SubscribedEvent.OutputTuple,
-    SubscribedEvent.OutputObject
+    WithdrawEvent.InputTuple,
+    WithdrawEvent.OutputTuple,
+    WithdrawEvent.OutputObject
   >;
 
   filters: {
-    "Redeemed(address,uint256,uint256)": TypedContractEvent<
-      RedeemedEvent.InputTuple,
-      RedeemedEvent.OutputTuple,
-      RedeemedEvent.OutputObject
+    "Deposit(address,address,uint256,uint256)": TypedContractEvent<
+      DepositEvent.InputTuple,
+      DepositEvent.OutputTuple,
+      DepositEvent.OutputObject
     >;
-    Redeemed: TypedContractEvent<
-      RedeemedEvent.InputTuple,
-      RedeemedEvent.OutputTuple,
-      RedeemedEvent.OutputObject
+    Deposit: TypedContractEvent<
+      DepositEvent.InputTuple,
+      DepositEvent.OutputTuple,
+      DepositEvent.OutputObject
     >;
 
-    "Subscribed(address,uint256,uint256)": TypedContractEvent<
-      SubscribedEvent.InputTuple,
-      SubscribedEvent.OutputTuple,
-      SubscribedEvent.OutputObject
+    "Withdraw(address,address,address,uint256,uint256)": TypedContractEvent<
+      WithdrawEvent.InputTuple,
+      WithdrawEvent.OutputTuple,
+      WithdrawEvent.OutputObject
     >;
-    Subscribed: TypedContractEvent<
-      SubscribedEvent.InputTuple,
-      SubscribedEvent.OutputTuple,
-      SubscribedEvent.OutputObject
+    Withdraw: TypedContractEvent<
+      WithdrawEvent.InputTuple,
+      WithdrawEvent.OutputTuple,
+      WithdrawEvent.OutputObject
     >;
   };
 }

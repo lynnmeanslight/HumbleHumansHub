@@ -24,7 +24,6 @@ export interface NanopaymentReceipt {
 }
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-const CIRCLE_APP_ID = process.env.NEXT_PUBLIC_CIRCLE_APP_ID;
 
 /**
  * Create a nanopayment intent for an article read.

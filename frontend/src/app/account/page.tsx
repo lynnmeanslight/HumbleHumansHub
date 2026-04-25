@@ -68,7 +68,7 @@ function ProfileTab({ address }: { address: string }) {
     <form onSubmit={handleSave} className="space-y-5 max-w-md">
       {/* Wallet address (read-only) */}
       <div>
-        <label className="block text-[12px] font-medium text-[#1d1d1f] mb-2">Wallet address</label>
+        <label className="block text-[12px] font-medium text-[#1d1d1f] mb-2">Account address</label>
         <div className="h-10 px-3.5 rounded-lg border border-black/[0.08] bg-black/[0.02] flex items-center">
           <span className="text-[13px] text-[#86868b] font-mono truncate">{address}</span>
         </div>
@@ -168,27 +168,27 @@ function WalletTab() {
 
   useEffect(() => {
     if (!isDepositSuccess) return;
-    refetchBalance(); setAmt(""); setTxMsg("Deposit confirmed ✓");
+    refetchBalance(); setAmt(""); setTxMsg("Funds added ✓");
     setTimeout(() => setTxMsg(null), 4000);
   }, [isDepositSuccess, refetchBalance]);
 
   useEffect(() => {
     if (!depositError) return;
-    const msg = (depositError as { shortMessage?: string }).shortMessage ?? depositError.message ?? "Deposit failed";
+    const msg = (depositError as { shortMessage?: string }).shortMessage ?? depositError.message ?? "Could not add funds";
     setTxMsg(`Error: ${msg}`);
     setTimeout(() => setTxMsg(null), 6000);
   }, [depositError]);
 
   useEffect(() => {
     if (!isWithdrawSuccess) return;
-    refetchBalance(); setTxMsg("Withdrawal confirmed ✓");
+    refetchBalance(); setTxMsg("Cash out confirmed ✓");
     setTimeout(() => setTxMsg(null), 4000);
   }, [isWithdrawSuccess, refetchBalance]);
 
   const handleDeposit = async () => {
     if (!isOnArc) {
       try { await switchToArcAsync(); } catch {
-        setTxMsg("Error: Please switch to Arc Testnet to deposit");
+        setTxMsg("Error: Please switch to the payment network to add funds");
         setTimeout(() => setTxMsg(null), 6000); return;
       }
     }
@@ -196,14 +196,14 @@ function WalletTab() {
     if (!amtNum || amtNum <= 0) return;
     const amtAtomic = BigInt(Math.round(amtNum * 1e18));
     try { deposit(amtAtomic); } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Deposit failed";
+      const msg = err instanceof Error ? err.message : "Could not add funds";
       setTxMsg(`Error: ${msg}`); setTimeout(() => setTxMsg(null), 6000);
     }
   };
 
   const handleWithdraw = async () => {
     try { await withdraw(); } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Withdraw failed";
+      const msg = err instanceof Error ? err.message : "Cash out failed";
       setTxMsg(`Error: ${msg}`); setTimeout(() => setTxMsg(null), 6000);
     }
   };
@@ -222,7 +222,7 @@ function WalletTab() {
 
           {/* Deposit */}
           <div className="card p-5">
-            <span className="text-label">Deposit USDC</span>
+            <span className="text-label">Add Funds</span>
             <div className="mt-3 space-y-3">
               <div className="relative">
                 <input
@@ -242,13 +242,13 @@ function WalletTab() {
               </div>
               {amt && Number(amt) > 0 && (
                 <div className="p-3 rounded-lg bg-[#f5f5f7] border border-black/[0.06] space-y-1.5">
-                  <div className="text-[11px] text-[#86868b]">Allocation:</div>
+                  <div className="text-[11px] text-[#86868b]">Where your money goes:</div>
                   <div className="flex justify-between text-[12px]">
-                    <span className="text-[#6e6e73]">USDC Float</span>
+                    <span className="text-[#6e6e73]">Ready to spend</span>
                     <span className="text-[#1d1d1f]">${Math.min(Number(amt), 0.01).toFixed(4)}</span>
                   </div>
                   <div className="flex justify-between text-[12px]">
-                    <span className="text-[#6e6e73]">→ USYC (yield)</span>
+                    <span className="text-[#6e6e73]">Savings that keep growing</span>
                     <span className="text-[#1a8917]">${Math.max(0, Number(amt) - 0.01).toFixed(4)}</span>
                   </div>
                 </div>
@@ -256,25 +256,25 @@ function WalletTab() {
               <button onClick={handleDeposit}
                 disabled={!isConnected || (isOnArc && (!Number(amt) || isDepositing))}
                 className="btn-accent w-full disabled:opacity-50">
-                {isDepositing ? "Confirming…" : !isConnected ? "Connect wallet" : !isOnArc ? "Switch to Arc Testnet" : !Number(amt) ? "Enter an amount" : "Deposit"}
+                {isDepositing ? "Confirming…" : !isConnected ? "Connect to continue" : !isOnArc ? "Switch Payment Network" : !Number(amt) ? "Enter an amount" : "Add Funds"}
               </button>
-              {!isConnected && <p className="text-[11px] text-[#86868b] text-center">Connect wallet to deposit</p>}
+              {!isConnected && <p className="text-[11px] text-[#86868b] text-center">Connect to add money to your reading balance</p>}
             </div>
           </div>
 
           {/* Withdraw */}
           <div className="card p-5">
-            <span className="text-label">Withdraw</span>
+            <span className="text-label">Cash Out</span>
             <div className="mt-2 mb-3">
-              <div className="text-[12px] text-[#86868b] mb-1">Available (USDC est.)</div>
+              <div className="text-[12px] text-[#86868b] mb-1">Available to cash out</div>
               <div className="text-[20px] font-bold text-[#1d1d1f]">${total.toFixed(4)}</div>
             </div>
             <button onClick={handleWithdraw}
               disabled={!isConnected || (isOnArc && total === 0) || isWithdrawing}
               className="btn-secondary w-full disabled:opacity-50">
-              {isWithdrawing ? "Withdrawing…" : !isOnArc ? "Switch to Arc Testnet" : "Withdraw to USDC"}
+              {isWithdrawing ? "Cashing out…" : !isOnArc ? "Switch Payment Network" : "Cash Out"}
             </button>
-            <p className="text-[11px] text-[#86868b] mt-2 text-center">USYC → USDC instantly</p>
+            <p className="text-[11px] text-[#86868b] mt-2 text-center">We convert everything back for you automatically</p>
           </div>
         </div>
 
@@ -287,9 +287,9 @@ function WalletTab() {
             {isConnected ? (
               <div className="px-5 py-5 space-y-3">
                 {[
-                  { label: "USDC Float (instant reads)", value: `$${floatUsdc.toFixed(6)}`, note: "~" + Math.floor(floatUsdc / 0.001) + " reads available" },
-                  { label: "USYC Staked (yield-bearing)", value: `$${stakedUsdc.toFixed(6)}`, note: "Auto-staked on deposit" },
-                  { label: "Total Estimated Value",       value: `$${total.toFixed(6)}`,     note: "Float + USYC in USDC" },
+                  { label: "Ready to spend", value: `$${floatUsdc.toFixed(6)}`, note: "~" + Math.floor(floatUsdc / 0.001) + " reads available right now" },
+                  { label: "Growing in savings", value: `$${stakedUsdc.toFixed(6)}`, note: "Unused funds keep working in the background" },
+                  { label: "Total balance", value: `$${total.toFixed(6)}`, note: "Spendable now plus savings balance" },
                 ].map(row => (
                   <div key={row.label} className="flex items-start justify-between py-2.5 border-b border-black/[0.05] last:border-0">
                     <div>
@@ -301,7 +301,7 @@ function WalletTab() {
                 ))}
               </div>
             ) : (
-              <div className="px-5 py-10 text-center text-[13px] text-[#86868b]">Connect your wallet to view balance details</div>
+              <div className="px-5 py-10 text-center text-[13px] text-[#86868b]">Connect to view your balance details</div>
             )}
           </div>
 
@@ -309,9 +309,9 @@ function WalletTab() {
             <h3 className="text-title mb-4">How it works.</h3>
             <div className="space-y-3">
               {[
-                "Deposit USDC — $0.01 stays as liquid float for instant reads.",
-                "Rest auto-stakes into USYC — earning yield while you browse.",
-                "Each read deducts $0.001 from float, or redeems USYC if float is low.",
+                "Add funds once. A tiny amount stays ready so article unlocks feel instant.",
+                "The rest moves into a background savings balance while you browse.",
+                "Each article unlock uses your ready balance first, then quietly refills if needed.",
               ].map((t, i) => (
                 <div key={i} className="flex items-start gap-3">
                   <div className="w-5 h-5 rounded-full bg-[#0071e3] flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -363,7 +363,7 @@ function AccountContent() {
       <section className="pt-12">
         <div className="max-w-content mx-auto px-6 py-14 md:py-20 text-center">
           <h1 className="text-hero mb-3">Account.</h1>
-          <p className="text-[17px] text-[#86868b]">Manage your wallet and profile.</p>
+          <p className="text-[17px] text-[#86868b]">Manage your balance, payouts, and profile.</p>
         </div>
       </section>
 
@@ -381,7 +381,7 @@ function AccountContent() {
                     : "border-transparent text-[#6e6e73] hover:text-[#1d1d1f]"
                 }`}
               >
-                {t === "wallet" ? "Wallet" : "Profile"}
+                {t === "wallet" ? "Balance" : "Profile"}
               </button>
             ))}
           </div>
@@ -393,7 +393,7 @@ function AccountContent() {
         <div className="max-w-content mx-auto px-6 py-10 md:py-14">
           {!isConnected ? (
             <div className="max-w-sm mx-auto text-center py-10">
-              <p className="text-[14px] text-[#6e6e73] mb-4">Connect your wallet to manage your account.</p>
+              <p className="text-[14px] text-[#6e6e73] mb-4">Connect to manage your account.</p>
             </div>
           ) : tab === "wallet" ? (
             <WalletTab />

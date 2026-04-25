@@ -14,6 +14,10 @@ import * as Contracts from ".";
 declare module "hardhat/types/runtime" {
   interface HardhatEthersHelpers extends HardhatEthersHelpersBase {
     getContractFactory(
+      name: "IERC20",
+      signerOrOptions?: ethers.Signer | FactoryOptions
+    ): Promise<Contracts.IERC20__factory>;
+    getContractFactory(
       name: "ITeller",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ITeller__factory>;
@@ -26,10 +30,6 @@ declare module "hardhat/types/runtime" {
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.IWriterVault__factory>;
     getContractFactory(
-      name: "MockTeller",
-      signerOrOptions?: ethers.Signer | FactoryOptions
-    ): Promise<Contracts.MockTeller__factory>;
-    getContractFactory(
       name: "ReaderVault",
       signerOrOptions?: ethers.Signer | FactoryOptions
     ): Promise<Contracts.ReaderVault__factory>;
@@ -39,6 +39,11 @@ declare module "hardhat/types/runtime" {
     ): Promise<Contracts.WriterVault__factory>;
 
     getContractAt(
+      name: "IERC20",
+      address: string | ethers.Addressable,
+      signer?: ethers.Signer
+    ): Promise<Contracts.IERC20>;
+    getContractAt(
       name: "ITeller",
       address: string | ethers.Addressable,
       signer?: ethers.Signer
@@ -53,11 +58,6 @@ declare module "hardhat/types/runtime" {
       address: string | ethers.Addressable,
       signer?: ethers.Signer
     ): Promise<Contracts.IWriterVault>;
-    getContractAt(
-      name: "MockTeller",
-      address: string | ethers.Addressable,
-      signer?: ethers.Signer
-    ): Promise<Contracts.MockTeller>;
     getContractAt(
       name: "ReaderVault",
       address: string | ethers.Addressable,
@@ -70,6 +70,10 @@ declare module "hardhat/types/runtime" {
     ): Promise<Contracts.WriterVault>;
 
     deployContract(
+      name: "IERC20",
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IERC20>;
+    deployContract(
       name: "ITeller",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.ITeller>;
@@ -81,10 +85,6 @@ declare module "hardhat/types/runtime" {
       name: "IWriterVault",
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IWriterVault>;
-    deployContract(
-      name: "MockTeller",
-      signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.MockTeller>;
     deployContract(
       name: "ReaderVault",
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -95,6 +95,11 @@ declare module "hardhat/types/runtime" {
     ): Promise<Contracts.WriterVault>;
 
     deployContract(
+      name: "IERC20",
+      args: any[],
+      signerOrOptions?: ethers.Signer | DeployContractOptions
+    ): Promise<Contracts.IERC20>;
+    deployContract(
       name: "ITeller",
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
@@ -109,11 +114,6 @@ declare module "hardhat/types/runtime" {
       args: any[],
       signerOrOptions?: ethers.Signer | DeployContractOptions
     ): Promise<Contracts.IWriterVault>;
-    deployContract(
-      name: "MockTeller",
-      args: any[],
-      signerOrOptions?: ethers.Signer | DeployContractOptions
-    ): Promise<Contracts.MockTeller>;
     deployContract(
       name: "ReaderVault",
       args: any[],

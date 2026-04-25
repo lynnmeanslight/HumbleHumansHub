@@ -33,11 +33,11 @@ If you are presenting live or creating a pitch deck for the hackathon, use this 
 ---
 
 ## Slide 5: The Business Model (How We Make Money)
-**Visually:** Flowchart showing "Reader Float -> Arc -> USYC (5% Yield) -> HumbleHumansHub Treasury"
+**Visually:** Flowchart showing "Reader Float -> Arc -> USYC (5% Yield) -> HumbleHumansHub Treasury" + "Per-Read Fixed Fee"
 **The Pitch:** 
-"We built something radical: **We charge a 0% platform fee on reads.** 100% of the $0.001 goes to the creator.
-So how do we make money? **The Float.**
-To read seamlessly, users deposit a USDC balance (e.g., $10) into our ReaderVault. We instantly convert idle deposits into Circle/Hashnote USYC, which bears a ~5% T-bill yield. The platform takes a small management fee purely off the *yield* of the idle capital in the vault. We monetize the liquidity, not the transaction."
+"We built something radical: **We charge a fixed network toll of exactly $0.001 per read**, no matter what the creator charges. If a creator charges $0.05, the user pays $0.05. The creator gets $0.049, and the platform gets $0.001. This monetizes the velocity of transactions directly.
+But it doesn't stop there. **The Float.**
+To read seamlessly, users deposit a USDC balance (e.g., $10) into our ReaderVault. We instantly convert idle deposits into Circle/Hashnote USYC, which bears a ~5% T-bill yield. The platform takes a small management fee purely off the *yield* of the idle capital in the vault. We monetize the volume of attention today, and the scale of liquidity tomorrow."
 
 ---
 

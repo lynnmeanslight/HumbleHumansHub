@@ -2,6 +2,5 @@
 /* tslint:disable */
 /* eslint-disable */
 export * as interfaces from "./interfaces";
-export { MockTeller__factory } from "./MockTeller__factory";
 export { ReaderVault__factory } from "./ReaderVault__factory";
 export { WriterVault__factory } from "./WriterVault__factory";

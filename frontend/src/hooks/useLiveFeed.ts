@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
 export interface LiveFeedEvent {
   id: string;
@@ -9,6 +9,7 @@ export interface LiveFeedEvent {
   slug: string;
   writer: string;
   amount: number;
+  eventType: string;
   txHash?: string;
   blockNumber?: number;
   timestamp: number;
@@ -23,14 +24,14 @@ export interface LiveFeedEvent {
  */
 export function useLiveFeed() {
   const [events, setEvents] = useState<LiveFeedEvent[]>([]);
-  const [totalReads, setTotalReads] = useState(0);
-  const [totalVolume, setTotalVolume] = useState(0);
   const [connected, setConnected] = useState(false);
   const esRef = useRef<EventSource | null>(null);
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isActiveRef = useRef(true);
 
   // ─── SSE connection ────────────────────────────────────────────────────────
   const connectSSE = useCallback(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !isActiveRef.current) return;
 
     try {
       const es = new EventSource("/api/feed");
@@ -42,16 +43,18 @@ export function useLiveFeed() {
         const event = JSON.parse(e.data);
         // Skip control messages (e.g. the initial "connected" handshake)
         if (!event.id || event.amount == null) return;
-        setEvents(prev => [event as LiveFeedEvent, ...prev].slice(0, 100));
-        setTotalReads(r => r + 1);
-        setTotalVolume(v => v + event.amount);
+
+        setEvents((prev) => {
+          if (prev.some((item) => item.id === event.id)) return prev;
+          return [event as LiveFeedEvent, ...prev].slice(0, 100);
+        });
       };
 
       es.onerror = () => {
         setConnected(false);
         es.close();
-        // Retry after 5s
-        setTimeout(connectSSE, 5000);
+        if (!isActiveRef.current) return;
+        retryTimeoutRef.current = setTimeout(connectSSE, 5000);
       };
     } catch {
       setConnected(false);
@@ -59,8 +62,13 @@ export function useLiveFeed() {
   }, []);
 
   useEffect(() => {
+    isActiveRef.current = true;
     connectSSE();
-    return () => { esRef.current?.close(); };
+    return () => {
+      isActiveRef.current = false;
+      esRef.current?.close();
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+    };
   }, [connectSSE]);
 
   // ─── Age updater ──────────────────────────────────────────────────────────
@@ -79,6 +87,12 @@ export function useLiveFeed() {
     if (s < 60) return `${s}s ago`;
     return `${Math.floor(s / 60)}m ago`;
   }
+
+  const totalReads = useMemo(() => events.length, [events]);
+  const totalVolume = useMemo(
+    () => events.reduce((sum, event) => sum + event.amount, 0),
+    [events]
+  );
 
   return {
     events,

@@ -1,0 +1,52 @@
+name: humblehumanshub-article-read-events
+apiVersion: 3
+resource_size: s
+
+sources:
+  arc_raw_logs:
+    type: dataset
+    dataset_name: arc.raw_logs
+    version: 1.0.0
+    start_at: latest
+
+transforms:
+  article_read_decoded:
+    primary_key: id
+    sql: >
+      SELECT
+        `id`,
+        _gs_log_decode(
+          '[{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"reader","type":"address"},{"indexed":true,"internalType":"address","name":"writer","type":"address"},{"indexed":false,"internalType":"string","name":"slug","type":"string"},{"indexed":false,"internalType":"uint256","name":"usdcPaid","type":"uint256"}],"name":"ArticleRead","type":"event"}]',
+          `topics`,
+          `data`
+        ) AS `decoded`,
+        transaction_hash,
+        log_index,
+        block_number,
+        block_timestamp
+      FROM arc_raw_logs
+      WHERE lower(address) = lower('0xd14c4fA78146cF86147c51d2be7006cF73A83CE4')
+  article_read_events:
+    primary_key: id
+    sql: >
+      SELECT
+        `id`,
+        transaction_hash AS tx_hash,
+        CAST(log_index AS INT) AS log_index,
+        CAST(block_number AS BIGINT) AS block_number,
+        decoded.event_params[1] AS reader,
+        decoded.event_params[2] AS writer_address,
+        decoded.event_params[3] AS article_slug,
+        CAST(decoded.event_params[4] AS DECIMAL(20, 18)) AS amount,
+        TO_TIMESTAMP_LTZ(CAST(block_timestamp AS BIGINT), 3) AS observed_at
+      FROM article_read_decoded
+      WHERE decoded IS NOT NULL
+        AND decoded.event_signature = 'ArticleRead(address,address,string,uint256)'
+
+sinks:
+  article_read_events_postgres:
+    type: postgres
+    from: article_read_events
+    schema: public
+    table: article_read_events
+    secret_name: HUMBLEHUMANSHUB_POSTGRES

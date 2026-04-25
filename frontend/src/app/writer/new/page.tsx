@@ -5,18 +5,18 @@ import { useAccount } from "wagmi";
 import { ConnectWallet } from "@/components/ConnectWallet";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEditor, EditorContent } from "@tiptap/react";
+import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { Markdown } from "tiptap-markdown";
-import { 
-  Bold, Italic, Heading2, Heading3, 
-  Quote, Code, Minus, LayoutTemplate 
+import {
+  Bold, Italic, Heading2, Heading3,
+  Quote, Code, Minus,
 } from "lucide-react";
 
 const CATEGORIES = ["Economics", "Web3", "DeFi", "Cryptography", "Development", "Yield", "Infrastructure", "Opinion"];
 
-const MenuBar = ({ editor }: { editor: any }) => {
+const MenuBar = ({ editor }: { editor: Editor | null }) => {
   if (!editor) return null;
 
   return (
@@ -110,7 +110,7 @@ export default function NewArticlePage() {
 
     if (!title.trim()) { setError("Title is required"); return; }
     if (!textContent.trim()) { setError("Write some content first"); return; }
-    if (!isConnected) { setError("Connect your wallet to publish"); return; }
+    if (!isConnected) { setError("Connect to publish"); return; }
 
     setError("");
     setPublishing(true);
@@ -159,7 +159,7 @@ export default function NewArticlePage() {
               className="btn-accent py-1.5 px-4 disabled:opacity-40 text-[13px] rounded-full"
               id="publish-btn"
             >
-              {publishing ? "Publishing…" : `Publish for $${price}`}
+              {publishing ? "Publishing…" : `Publish at $${price} per read`}
             </button>
           </div>
         </div>
@@ -200,7 +200,7 @@ export default function NewArticlePage() {
             <div className="h-4 w-[1px] bg-black/[0.1] hidden md:block" />
 
             <div className="flex items-center gap-3">
-              <span className="text-[14px] text-[#86868b]">Price (USDC):</span>
+              <span className="text-[14px] text-[#86868b]">Reader price:</span>
               <select
                 value={price}
                 onChange={e => setPrice(e.target.value)}

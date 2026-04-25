@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/Users/lynn/Desktop/humblehumanshub/contracts/ReaderVault.sol": {
-      "lastModificationDate": 1776979316830,
-      "contentHash": "745b2f1ae2e1cb46493df2d1ccb079c5",
+      "lastModificationDate": 1777078517728,
+      "contentHash": "77095a8c783cddd8a3bc81a2a2bc3b0b",
       "sourceName": "contracts/ReaderVault.sol",
       "solcConfig": {
         "version": "0.8.24",
@@ -41,8 +41,45 @@
         "ReaderVault"
       ]
     },
+    "/Users/lynn/Desktop/humblehumanshub/contracts/interfaces/ITeller.sol": {
+      "lastModificationDate": 1777078492114,
+      "contentHash": "b44236fec50813221ffa957216014a0e",
+      "sourceName": "contracts/interfaces/ITeller.sol",
+      "solcConfig": {
+        "version": "0.8.24",
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.24"
+      ],
+      "artifacts": [
+        "IERC20",
+        "ITeller"
+      ]
+    },
     "/Users/lynn/Desktop/humblehumanshub/contracts/interfaces/IUSYC.sol": {
-      "lastModificationDate": 1776741881275,
+      "lastModificationDate": 1776977178672,
       "contentHash": "471eaa77f6ad7385b0561503a7dc8e95",
       "sourceName": "contracts/interfaces/IUSYC.sol",
       "solcConfig": {
@@ -77,83 +114,8 @@
         "IUSYC"
       ]
     },
-    "/Users/lynn/Desktop/humblehumanshub/contracts/interfaces/ITeller.sol": {
-      "lastModificationDate": 1776919863296,
-      "contentHash": "ea632e4130664dbf909379c868af4829",
-      "sourceName": "contracts/interfaces/ITeller.sol",
-      "solcConfig": {
-        "version": "0.8.24",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [],
-      "versionPragmas": [
-        "^0.8.24"
-      ],
-      "artifacts": [
-        "ITeller"
-      ]
-    },
-    "/Users/lynn/Desktop/humblehumanshub/contracts/WriterVault.sol": {
-      "lastModificationDate": 1776919912556,
-      "contentHash": "252d557aeb7ad0d8f3d238bc0365c67b",
-      "sourceName": "contracts/WriterVault.sol",
-      "solcConfig": {
-        "version": "0.8.24",
-        "settings": {
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "./interfaces/ITeller.sol",
-        "./interfaces/IUSYC.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.24"
-      ],
-      "artifacts": [
-        "WriterVault"
-      ]
-    },
     "/Users/lynn/Desktop/humblehumanshub/contracts/interfaces/IWriterVault.sol": {
-      "lastModificationDate": 1776965073990,
+      "lastModificationDate": 1776977178672,
       "contentHash": "05af95a5b099d0e041c9558da85d447c",
       "sourceName": "contracts/interfaces/IWriterVault.sol",
       "solcConfig": {
@@ -188,10 +150,10 @@
         "IWriterVault"
       ]
     },
-    "/Users/lynn/Desktop/humblehumanshub/contracts/MockTeller.sol": {
-      "lastModificationDate": 1776971002148,
-      "contentHash": "46cd52c150daf6cefe2e2edac885ec48",
-      "sourceName": "contracts/MockTeller.sol",
+    "/Users/lynn/Desktop/humblehumanshub/contracts/WriterVault.sol": {
+      "lastModificationDate": 1777078517728,
+      "contentHash": "96d84842c3024f910ff0c0312bad77b1",
+      "sourceName": "contracts/WriterVault.sol",
       "solcConfig": {
         "version": "0.8.24",
         "settings": {
@@ -216,12 +178,15 @@
           }
         }
       },
-      "imports": [],
+      "imports": [
+        "./interfaces/ITeller.sol",
+        "./interfaces/IUSYC.sol"
+      ],
       "versionPragmas": [
         "^0.8.24"
       ],
       "artifacts": [
-        "MockTeller"
+        "WriterVault"
       ]
     }
   }

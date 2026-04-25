@@ -15,7 +15,7 @@ export function WalletBalance() {
     return (
       <div className="card p-5" id="wallet-balance">
         <div className="text-label mb-3">Your Balance</div>
-        <p className="text-[13px] text-[#86868b]">Connect your wallet to view your balance.</p>
+        <p className="text-[13px] text-[#86868b]">Connect to see your reading balance.</p>
       </div>
     );
   }
@@ -37,8 +37,8 @@ export function WalletBalance() {
       </div>
       <div>
         {[
-          { label: "USDC Float",   value: `$${floatUsdc.toFixed(4)}`,  dot: "bg-[#0071e3]", color: "text-[#1d1d1f]" },
-          { label: "USYC Staked",  value: `$${stakedUsdc.toFixed(4)}`, dot: "bg-[#86868b]", color: "text-[#1d1d1f]" },
+          { label: "Ready to Spend", value: `$${floatUsdc.toFixed(4)}`,  dot: "bg-[#0071e3]", color: "text-[#1d1d1f]" },
+          { label: "Growing in Savings", value: `$${stakedUsdc.toFixed(4)}`, dot: "bg-[#86868b]", color: "text-[#1d1d1f]" },
         ].map((r, i) => (
           <div key={r.label} className={`flex items-center justify-between py-3 ${i === 0 ? "border-b border-black/[0.06]" : ""}`}>
             <div className="flex items-center gap-2.5">

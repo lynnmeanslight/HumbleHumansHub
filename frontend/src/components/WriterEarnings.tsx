@@ -15,8 +15,8 @@ export function WriterEarnings() {
   if (!isConnected) {
     return (
       <div className="card p-5" id="writer-earnings">
-        <div className="text-label mb-3">Writer Earnings</div>
-        <p className="text-[13px] text-[#86868b]">Connect your wallet to see your earnings.</p>
+        <div className="text-label mb-3">Creator Earnings</div>
+        <p className="text-[13px] text-[#86868b]">Connect to see your earnings.</p>
       </div>
     );
   }
@@ -24,9 +24,9 @@ export function WriterEarnings() {
   return (
     <div className="card p-5" id="writer-earnings">
       <div className="flex items-center justify-between mb-4">
-        <span className="text-label">Writer Earnings</span>
+        <span className="text-label">Creator Earnings</span>
         {yieldEarned > 0 && (
-          <span className="badge badge-positive text-[11px]">+yield</span>
+          <span className="badge badge-positive text-[11px]">+growth</span>
         )}
       </div>
       <div className="mb-5">
@@ -37,11 +37,11 @@ export function WriterEarnings() {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-[#f5f5f7] rounded-lg p-4">
-          <div className="text-label mb-2">Content</div>
+          <div className="text-label mb-2">From readers</div>
           <div className="text-[20px] font-semibold text-[#1d1d1f]">${earnedUsdc.toFixed(3)}</div>
         </div>
         <div className="bg-[#f5f5f7] rounded-lg p-4">
-          <div className="text-label mb-2">Yield</div>
+          <div className="text-label mb-2">Balance growth</div>
           <div className="text-[20px] font-semibold text-[#1a8917]">+${yieldEarned.toFixed(4)}</div>
         </div>
       </div>

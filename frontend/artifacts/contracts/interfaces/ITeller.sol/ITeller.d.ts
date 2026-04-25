@@ -14,11 +14,30 @@ export interface ITeller$Type {
   "abi": [
     {
       "inputs": [],
-      "name": "exchangeRate",
+      "name": "asset",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "shares",
+          "type": "uint256"
+        }
+      ],
+      "name": "convertToAssets",
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "",
+          "name": "assets",
           "type": "uint256"
         }
       ],
@@ -29,15 +48,39 @@ export interface ITeller$Type {
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "usycAmount",
+          "name": "assets",
           "type": "uint256"
         }
       ],
-      "name": "redeem",
+      "name": "convertToShares",
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "usdcAmount",
+          "name": "shares",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "assets",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        }
+      ],
+      "name": "deposit",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "shares",
           "type": "uint256"
         }
       ],
@@ -45,31 +88,18 @@ export interface ITeller$Type {
       "type": "function"
     },
     {
-      "inputs": [],
-      "name": "subscribe",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "usycAmount",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "payable",
-      "type": "function"
-    },
-    {
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "usdcAmount",
+          "name": "assets",
           "type": "uint256"
         }
       ],
-      "name": "usdcToUsyc",
+      "name": "previewDeposit",
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "usycAmount",
+          "name": "shares",
           "type": "uint256"
         }
       ],
@@ -80,19 +110,48 @@ export interface ITeller$Type {
       "inputs": [
         {
           "internalType": "uint256",
-          "name": "usycAmount",
+          "name": "shares",
           "type": "uint256"
         }
       ],
-      "name": "usycToUsdc",
+      "name": "previewRedeem",
       "outputs": [
         {
           "internalType": "uint256",
-          "name": "usdcAmount",
+          "name": "assets",
           "type": "uint256"
         }
       ],
       "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "shares",
+          "type": "uint256"
+        },
+        {
+          "internalType": "address",
+          "name": "receiver",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "owner",
+          "type": "address"
+        }
+      ],
+      "name": "redeem",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "assets",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "nonpayable",
       "type": "function"
     }
   ],

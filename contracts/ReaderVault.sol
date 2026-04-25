@@ -17,7 +17,7 @@ import "./interfaces/IWriterVault.sol";
  */
 contract ReaderVault {
     // ─── Constants ───────────────────────────────────────────────────────────
-    uint256 public constant PRICE_PER_READ = 1_000_000_000_000_000;   // 0.001 USDC (18 decimals)
+    uint256 public constant PLATFORM_FEE = 1_000_000_000_000_000;   // 0.001 USDC (18 decimals)
     uint256 public constant FLOAT_AMOUNT   = 10_000_000_000_000_000; // 0.010 USDC float (18 decimals)
 
     // ─── State ────────────────────────────────────────────────────────────────
@@ -34,6 +34,8 @@ contract ReaderVault {
     // ─── Events ───────────────────────────────────────────────────────────────
     event Deposited(address indexed reader, uint256 usdcAmount, uint256 usycMinted);
     event ArticleRead(address indexed reader, address indexed writer, string slug, uint256 usdcPaid);
+    event CommentPaid(address indexed reader, address indexed writer, string slug, uint256 usdcPaid, string commentHash);
+    event ClapPaid(address indexed reader, address indexed writer, string slug, uint256 usdcPaid);
     event Withdrawn(address indexed reader, uint256 usdcAmount);
 
     // ─── Errors ───────────────────────────────────────────────────────────────
@@ -70,7 +72,9 @@ contract ReaderVault {
 
         uint256 usycMinted = 0;
         if (toStake > 0) {
-            usycMinted = teller.subscribe{value: toStake}();
+            address assetAddress = teller.asset();
+            IERC20(assetAddress).approve(address(teller), toStake);
+            usycMinted = teller.deposit(toStake, address(this));
             usycStaked[msg.sender] += usycMinted;
         }
 
@@ -78,36 +82,87 @@ contract ReaderVault {
     }
 
     /**
+     * @notice Internal logic to deduct funds and route payment.
+     */
+    function _processPayment(address reader, address writer, string calldata slug, uint256 price, uint256 fee) internal {
+        uint256 writerShare = price - fee;
+        uint256 floatBalance = usdcFloat[reader];
+
+        if (floatBalance >= price) {
+            // Fast path: use USDC float
+            usdcFloat[reader] -= price;
+            
+            if (fee > 0) {
+                (bool success, ) = owner.call{value: fee}("");
+                if (!success) revert TransferFailed();
+            }
+            if (writerShare > 0) {
+                IWriterVault(writerVault).receivePayment{value: writerShare}(writer, slug);
+            }
+        } else {
+            // Slow path: redeem USYC → USDC
+            uint256 usycNeeded = teller.previewDeposit(price); // approximate shares needed to get 'price' assets back
+            // To be safe, add a tiny buffer to avoid rounding issues, or just use convertToShares
+            usycNeeded = teller.convertToShares(price); 
+            if (usycStaked[reader] < usycNeeded) revert InsufficientBalance();
+
+            usycStaked[reader] -= usycNeeded;
+            uint256 usdcOut = teller.redeem(usycNeeded, address(this), address(this));
+
+            if (usdcOut < price) revert InsufficientBalance();
+            
+            if (fee > 0) {
+                (bool success, ) = owner.call{value: fee}("");
+                if (!success) revert TransferFailed();
+            }
+            if (writerShare > 0) {
+                IWriterVault(writerVault).receivePayment{value: writerShare}(writer, slug);
+            }
+
+            // Refund any excess back to float
+            if (usdcOut > price) {
+                usdcFloat[reader] += (usdcOut - price);
+            }
+        }
+    }
+
+    /**
      * @notice Pay for an article read. Deducts from USDC float first, then redeems USYC.
      * @param reader  Reader address (called by x402 middleware via trusted relayer)
      * @param writer  Writer address to receive payment
      * @param slug    Article slug (for event indexing)
+     * @param price   Total dynamic price set by the creator
      */
-    function payForRead(address reader, address writer, string calldata slug) external {
-        uint256 float = usdcFloat[reader];
+    function payForRead(address reader, address writer, string calldata slug, uint256 price) external {
+        require(price >= PLATFORM_FEE, "Price must be at least platform fee");
+        _processPayment(reader, writer, slug, price, PLATFORM_FEE);
+        emit ArticleRead(reader, writer, slug, price);
+    }
 
-        if (float >= PRICE_PER_READ) {
-            // Fast path: use USDC float
-            usdcFloat[reader] -= PRICE_PER_READ;
-            IWriterVault(writerVault).receivePayment{value: PRICE_PER_READ}(writer, slug);
-        } else {
-            // Slow path: redeem USYC → USDC
-            uint256 usycNeeded = teller.usdcToUsyc(PRICE_PER_READ);
-            if (usycStaked[reader] < usycNeeded) revert InsufficientBalance();
+    /**
+     * @notice Pay to leave a comment (anti-spam).
+     * @param reader      Reader address
+     * @param writer      Writer address
+     * @param slug        Article slug
+     * @param price       Dynamic comment price set by creator
+     * @param commentHash IPFS/Content hash of the comment
+     */
+    function payForComment(address reader, address writer, string calldata slug, uint256 price, string calldata commentHash) external {
+        require(price > 0, "Comment price must be > 0");
+        _processPayment(reader, writer, slug, price, 0); // No platform fee for comments
+        emit CommentPaid(reader, writer, slug, price, commentHash);
+    }
 
-            usycStaked[reader] -= usycNeeded;
-            uint256 usdcOut = teller.redeem(usycNeeded);
-
-            if (usdcOut < PRICE_PER_READ) revert InsufficientBalance();
-            IWriterVault(writerVault).receivePayment{value: PRICE_PER_READ}(writer, slug);
-
-            // Refund any excess back to float
-            if (usdcOut > PRICE_PER_READ) {
-                usdcFloat[reader] += (usdcOut - PRICE_PER_READ);
-            }
-        }
-
-        emit ArticleRead(reader, writer, slug, PRICE_PER_READ);
+    /**
+     * @notice Micro-tip an author via a 'Clap'. Streams exactly $0.001 per clap to author.
+     * @param reader Reader address
+     * @param writer Writer address
+     * @param slug   Article slug
+     */
+    function payForClap(address reader, address writer, string calldata slug) external {
+        uint256 clapPrice = 1_000_000_000_000_000; // $0.001 USDC
+        _processPayment(reader, writer, slug, clapPrice, 0); // No platform fee
+        emit ClapPaid(reader, writer, slug, clapPrice);
     }
 
     /**
@@ -123,7 +178,7 @@ contract ReaderVault {
         uint256 total = float;
 
         if (staked > 0) {
-            uint256 redeemed = teller.redeem(staked);
+            uint256 redeemed = teller.redeem(staked, address(this), address(this));
             total += redeemed;
         }
 
@@ -143,7 +198,7 @@ contract ReaderVault {
     ) {
         usdcBalance      = usdcFloat[reader];
         usycBalance      = usycStaked[reader];
-        estimatedUsdcValue = usdcBalance + teller.usycToUsdc(usycBalance);
+        estimatedUsdcValue = usdcBalance + teller.convertToAssets(usycBalance);
     }
 
     receive() external payable {}

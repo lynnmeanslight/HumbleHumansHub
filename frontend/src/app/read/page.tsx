@@ -54,7 +54,7 @@ export default async function ReadPage() {
           </div>
           <div className="hidden md:flex items-center gap-1.5 text-[#86868b]">
             <span className="live-dot" />
-            <span className="text-[11px]">Live on Arc</span>
+            <span className="text-[11px]">Live payments</span>
           </div>
         </div>
       </div>

@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useAccount } from "wagmi";
+import { parseUnits } from "viem";
 import { useReaderVault } from "@/hooks/useReaderVault";
+import { ClapAndComment } from "@/components/ClapAndComment";
 
 interface PaymentGateProps {
   articleTitle: string;
@@ -38,13 +40,17 @@ export function PaymentGate({ articleTitle, authorName, price = "$0.001", slug, 
     totalUsdcValue,
     payForRead,
     isPaying,
+    isPaySubmitting,
+    isPayConfirming,
     isPaySuccess,
     payTxHash,
     payError,
-    pricePerRead,
     isOnArc,
     switchToArc,
   } = useReaderVault();
+
+  const numericPriceStr = price.replace(/[^0-9.]/g, "");
+  const priceBigInt = parseUnits(numericPriceStr, 18);
 
   const [uiState, setUiState] = useState<"locked" | "paying" | "unlocked">("locked");
   const [content, setContent] = useState<string | null>(null);
@@ -68,7 +74,7 @@ export function PaymentGate({ articleTitle, authorName, price = "$0.001", slug, 
           authorization: {
             from: address ?? "0x0000000000000000000000000000000000000000",
             to: writerAddress,
-            value: "1000",
+            value: priceBigInt.toString(),
             validAfter: 0,
             validBefore: Math.floor(Date.now() / 1000) + 60,
             nonce: `${slug}-${Date.now()}`,
@@ -110,7 +116,7 @@ export function PaymentGate({ articleTitle, authorName, price = "$0.001", slug, 
     setError(null);
 
     if (!isConnected || !address) {
-      setError("Connect your wallet first");
+      setError("Connect first to unlock this article");
       return;
     }
 
@@ -118,22 +124,22 @@ export function PaymentGate({ articleTitle, authorName, price = "$0.001", slug, 
       try {
         await switchToArc();
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Please switch to Arc Testnet to continue";
+        const msg = err instanceof Error ? err.message : "Please switch to the payment network to continue";
         setError(msg);
         return;
       }
     }
 
-    if (totalUsdcValue < pricePerRead) {
+    if (totalUsdcValue < priceBigInt) {
       const have = (Number(totalUsdcValue) / 1e18).toFixed(4);
-      setError(`Insufficient balance — vault has $${have} USDC, need $0.001. Top up your Reader Vault.`);
+      setError(`Not enough balance — you have $${have} available and need $${numericPriceStr}. Add more funds to keep reading.`);
       return;
     }
 
     paymentInitiated.current = true;
     setUiState("paying");
     try {
-      await payForRead(writerAddress, slug);
+      await payForRead(writerAddress, slug, priceBigInt);
     } catch (err) {
       paymentInitiated.current = false;
       setUiState("locked");
@@ -146,11 +152,17 @@ export function PaymentGate({ articleTitle, authorName, price = "$0.001", slug, 
     return (
       <div className="animate-fade-in" id="article-content-unlocked">
         <article>{renderMarkdown(content)}</article>
+        <ClapAndComment writerAddress={writerAddress} slug={slug} />
       </div>
     );
   }
 
   const isProcessing = uiState === "paying" || isPaying;
+  const paymentStatusLabel = isPaySubmitting
+    ? "Confirm in wallet…"
+    : isPayConfirming
+      ? "Waiting for chain confirmation…"
+      : "Unlocking article…";
 
   return (
     <div className="relative" id="payment-gate">
@@ -168,11 +180,11 @@ export function PaymentGate({ articleTitle, authorName, price = "$0.001", slug, 
             {authorName && <p className="text-[14px] font-medium text-[#86868b] mb-6">by {authorName}</p>}
             <div className="mb-4 flex items-center justify-center gap-1.5">
               <span className="text-[22px] font-semibold text-[#1d1d1f] tracking-tight">{price}</span>
-              <span className="text-[14px] font-medium text-[#86868b]">USDC</span>
+              <span className="text-[14px] font-medium text-[#86868b]">USD</span>
             </div>
             {isConnected && (
               <p className="text-[12px] text-[#86868b] mb-4">
-                Vault balance: ${(Number(totalUsdcValue) / 1e18).toFixed(4)} USDC
+                Available balance: ${(Number(totalUsdcValue) / 1e18).toFixed(4)}
               </p>
             )}
             {error && <p className="text-[12px] text-red-500 mb-3">{error}</p>}
@@ -188,11 +200,15 @@ export function PaymentGate({ articleTitle, authorName, price = "$0.001", slug, 
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  {isPaying ? "Confirm in wallet…" : "Settling on-chain…"}
+                  {paymentStatusLabel}
                 </span>
               ) : `Pay ${price} to Read`}
             </button>
-            <p className="text-[11px] text-[#86868b] mt-4">From your Reader Vault · Instant on Arc</p>
+            <p className="text-[11px] text-[#86868b] mt-4">
+              {isPayConfirming
+                ? "Your payment is submitted. Waiting for Arc to confirm it on-chain."
+                : "Charged from your reading balance"}
+            </p>
           </div>
         </div>
       </div>

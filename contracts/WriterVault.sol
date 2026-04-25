@@ -54,7 +54,9 @@ contract WriterVault {
         require(amount > 0, "Amount must be greater than 0");
 
         // Auto-stake all native USDC into USYC
-        uint256 usycMinted = teller.subscribe{value: amount}();
+        address assetAddress = teller.asset();
+        IERC20(assetAddress).approve(address(teller), amount);
+        uint256 usycMinted = teller.deposit(amount, address(this));
 
         usycBalance[writer]     += usycMinted;
         totalUsdcEarned[writer] += amount;
@@ -74,7 +76,7 @@ contract WriterVault {
 
         usycBalance[msg.sender] = 0;
 
-        uint256 usdcOut = teller.redeem(staked);
+        uint256 usdcOut = teller.redeem(staked, address(this), address(this));
         (bool success, ) = msg.sender.call{value: usdcOut}("");
         if (!success) revert TransferFailed();
 
@@ -90,7 +92,7 @@ contract WriterVault {
         uint256 lifetimeUsdc
     ) {
         usyc           = usycBalance[writer];
-        estimatedUsdc  = teller.usycToUsdc(usyc);
+        estimatedUsdc  = teller.convertToAssets(usyc);
         reads          = totalReads[writer];
         lifetimeUsdc   = totalUsdcEarned[writer];
     }

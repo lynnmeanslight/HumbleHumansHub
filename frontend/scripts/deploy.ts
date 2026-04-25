@@ -10,15 +10,6 @@ import { getAddress } from "viem";
  * Prerequisite env vars:
  *   DEPLOYER_PRIVATE_KEY — private key with testnet USDC for gas
  *   NEXT_PUBLIC_ARC_RPC_URL — Arc testnet RPC endpoint
- *   NEXT_PUBLIC_USYC_TOKEN_ADDRESS — USYC token on Arc
- *
- * NOTE: The production Hashnote Teller (NEXT_PUBLIC_USYC_TELLER_ADDRESS) uses
- * an ERC-4626 interface and requires callers to be on an on-chain allowlist
- * (maxDeposit returns 0 for non-whitelisted addresses). This script deploys
- * MockTeller instead, which has the subscribe()/redeem() interface expected by
- * ReaderVault and imposes no allowlist restrictions.
- * To use the real Teller, set USE_REAL_TELLER=true and ensure ReaderVault is
- * whitelisted by the Hashnote/Arc team.
  */
 
 // Deploy a contract and wait for receipt with a long timeout
@@ -35,9 +26,11 @@ async function deployWithTimeout(
     args,
   });
   console.log(`  tx: ${hash}`);
+  console.log(`  🔍 Track pending TX here: https://testnet.arcscan.app/tx/${hash}`);
+  
   const receipt = await publicClient.waitForTransactionReceipt({
     hash,
-    timeout: 300_000, // 5 minutes
+    timeout: 900_000, // 15 minutes to wait for congested network
     pollingInterval: 4_000,
   });
   if (!receipt.contractAddress) throw new Error(`No contract address in receipt for ${contractName}`);
@@ -49,28 +42,14 @@ async function main() {
   const publicClient = await hre.viem.getPublicClient();
   console.log("Deploying with address:", deployer.account.address);
 
-  const usycTokenAddress = process.env.NEXT_PUBLIC_USYC_TOKEN_ADDRESS;
-  const useRealTeller = process.env.USE_REAL_TELLER === "true";
-  const realTellerAddress = process.env.NEXT_PUBLIC_USYC_TELLER_ADDRESS;
+  // Official Arc Testnet Addresses
+  const usycTokenAddress = "0xe9185F0c5F296Ed1797AaE4238D26CCaBEadb86C";
+  const tellerAddress = "0x9fdF14c5B14173D74C08Af27AebFf39240dC105A";
 
-  if (!usycTokenAddress) {
-    throw new Error("Missing required env var: NEXT_PUBLIC_USYC_TOKEN_ADDRESS");
-  }
+  console.log("\nUsing official Hashnote Teller on Arc Testnet:", tellerAddress);
+  console.log("⚠️  Ensure ReaderVault and WriterVault are allowlisted on the Teller after deployment by Arc/Hashnote team.");
 
-  // 1. Deploy or use Teller
-  let tellerAddress: string;
-  if (useRealTeller) {
-    if (!realTellerAddress) throw new Error("USE_REAL_TELLER=true but NEXT_PUBLIC_USYC_TELLER_ADDRESS is not set");
-    tellerAddress = realTellerAddress;
-    console.log("\nUsing real Hashnote Teller:", tellerAddress);
-    console.log("⚠️  Ensure ReaderVault is allowlisted on the Teller after deployment.");
-  } else {
-    console.log("\nDeploying MockTeller (no allowlist, subscribe/redeem interface)...");
-    tellerAddress = await deployWithTimeout(publicClient, deployer, "MockTeller", []);
-    console.log("MockTeller deployed to:", tellerAddress);
-  }
-
-  // 2. Deploy WriterVault first (ReaderVault needs its address)
+  // 1. Deploy WriterVault first (ReaderVault needs its address)
   console.log("\nDeploying WriterVault...");
   const writerVaultAddress = await deployWithTimeout(publicClient, deployer, "WriterVault", [
     usycTokenAddress,
@@ -78,7 +57,7 @@ async function main() {
   ]);
   console.log("WriterVault deployed to:", writerVaultAddress);
 
-  // 3. Deploy ReaderVault with WriterVault address
+  // 2. Deploy ReaderVault with WriterVault address
   console.log("\nDeploying ReaderVault...");
   const readerVaultAddress = await deployWithTimeout(publicClient, deployer, "ReaderVault", [
     usycTokenAddress,
@@ -87,19 +66,13 @@ async function main() {
   ]);
   console.log("ReaderVault deployed to:", readerVaultAddress);
 
-  // 4. Output env vars to update
+  // 3. Output env vars to update
   console.log("\n✅ Deployment complete! Update .env.local:");
-  if (!useRealTeller) {
-    console.log(`NEXT_PUBLIC_USYC_TELLER_ADDRESS=${tellerAddress}`);
-  }
   console.log(`NEXT_PUBLIC_READER_VAULT_ADDRESS=${readerVaultAddress}`);
   console.log(`NEXT_PUBLIC_WRITER_VAULT_ADDRESS=${writerVaultAddress}`);
 
-  // 5. Verify on Arc Explorer
+  // 4. Verify on Arc Explorer
   console.log("\nVerify contracts at:");
-  if (!useRealTeller) {
-    console.log(`https://testnet.arcscan.app/address/${tellerAddress}`);
-  }
   console.log(`https://testnet.arcscan.app/address/${readerVaultAddress}`);
   console.log(`https://testnet.arcscan.app/address/${writerVaultAddress}`);
 }

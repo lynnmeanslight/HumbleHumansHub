@@ -53,9 +53,9 @@ export default function WriterDashboard() {
   useEffect(() => {
     if (!isWithdrawSuccess) return;
     refetchEarnings();
-    setTxMsg("Withdrawal confirmed ✓");
+    setTxMsg("Cash out confirmed ✓");
     setTimeout(() => setTxMsg(null), 4000);
-  }, [isWithdrawSuccess]);
+  }, [isWithdrawSuccess, refetchEarnings]);
 
   const handleWithdraw = () => {
     if (!isOnArc) { switchToArc(); return; }
@@ -64,9 +64,9 @@ export default function WriterDashboard() {
 
   const stats = [
     { lb: "Total Reads", v: isConnected ? reads.toLocaleString()      : "—", c: "text-[#1d1d1f]" },
-    { lb: "Revenue",     v: isConnected ? `$${earnedUsdc.toFixed(3)}`  : "—", c: "text-[#1d1d1f]" },
-    { lb: "Yield",       v: isConnected ? `+$${yieldEarned.toFixed(4)}`: "—", c: "text-[#1a8917]" },
-    { lb: "Total",       v: isConnected ? `$${pendingUsdc.toFixed(4)}`  : "—", c: "text-[#1d1d1f]" },
+    { lb: "Reader Revenue", v: isConnected ? `$${earnedUsdc.toFixed(3)}`  : "—", c: "text-[#1d1d1f]" },
+    { lb: "Balance Growth", v: isConnected ? `+$${yieldEarned.toFixed(4)}`: "—", c: "text-[#1a8917]" },
+    { lb: "Available Total", v: isConnected ? `$${pendingUsdc.toFixed(4)}`  : "—", c: "text-[#1d1d1f]" },
   ];
 
   return (
@@ -86,8 +86,8 @@ export default function WriterDashboard() {
 
       <section className="pt-12">
         <div className="max-w-content mx-auto px-6 py-14 md:py-20 text-center">
-          <h1 className="text-hero mb-3">Dashboard.</h1>
-          <p className="text-[17px] text-[#86868b] mb-6">Every read pays <span className="text-[#0071e3]">$0.001</span> + yield.</p>
+          <h1 className="text-hero mb-3">Creator Dashboard.</h1>
+          <p className="text-[17px] text-[#86868b] mb-6">Every read pays you instantly, and unused earnings keep growing in the background.</p>
           <Link href="/writer/new" className="btn-primary inline-flex gap-2 px-6 py-2.5" id="new-article-btn">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -163,7 +163,7 @@ export default function WriterDashboard() {
               <div className="card p-5">
                 <span className="text-label">Publish</span>
                 <p className="text-[13px] text-[#86868b] mt-2 mb-4 leading-relaxed">
-                  Write an article and start earning $0.001 per read instantly.
+                  Write an article and start earning from readers right away.
                 </p>
                 <Link href="/writer/new" className="btn-primary w-full flex items-center justify-center gap-2" id="new-article-card-btn">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -174,13 +174,13 @@ export default function WriterDashboard() {
               </div>
 
               <div className="card p-5">
-                <span className="text-label">Withdraw</span>
+                <span className="text-label">Cash Out</span>
                 <div className="mt-3 mb-4">
-                  <div className="text-[12px] text-[#86868b] mb-1">Available to withdraw</div>
+                  <div className="text-[12px] text-[#86868b] mb-1">Available to cash out</div>
                   <div className="text-[22px] font-bold text-[#1d1d1f]">
                     {isConnected ? `$${pendingUsdc.toFixed(4)}` : "—"}
                   </div>
-                  <div className="text-[11px] text-[#86868b] mt-0.5">USYC balance (est. USDC)</div>
+                  <div className="text-[11px] text-[#86868b] mt-0.5">Your saved earnings and reader payments combined</div>
                 </div>
                 <button
                   onClick={handleWithdraw}
@@ -188,9 +188,9 @@ export default function WriterDashboard() {
                   className="btn-primary w-full disabled:opacity-50"
                   id="withdraw-btn"
                 >
-                  {isWithdrawing ? "Withdrawing…" : !isOnArc ? "Switch to Arc Testnet" : "Withdraw Funds"}
+                  {isWithdrawing ? "Cashing out…" : !isOnArc ? "Switch Payment Network" : "Cash Out"}
                 </button>
-                <p className="text-[11px] text-[#86868b] mt-2.5 text-center">USYC → USDC via Teller</p>
+                <p className="text-[11px] text-[#86868b] mt-2.5 text-center">We convert everything back for you automatically</p>
               </div>
 
               <div className="card overflow-hidden">
@@ -199,7 +199,7 @@ export default function WriterDashboard() {
                   <span className="live-dot" />
                 </div>
                 <div className="px-4 py-8 text-center text-[12px] text-[#86868b]">
-                  {isConnected ? "No recent activity" : "Connect wallet to view activity"}
+                  {isConnected ? "No recent activity" : "Connect to view activity"}
                 </div>
               </div>
             </div>

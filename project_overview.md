@@ -1,10 +1,19 @@
 # HumbleHumansHub: Project Overview & Architecture
 
-## 1. Project Vision
+## 1. Project Vision (Arc Hackathon Submission)
 **HumbleHumansHub** is a next-generation, pay-per-read content platform built specifically for the **Arc Hackathon**. 
-It completely eliminates the need for subscriptions and accounts. Instead, readers pay a dynamic micropayment set by the creator (e.g., **$0.001 to $0.01 USDC**) per article. Writers receive 100% of this payment, which is automatically converted into yield-bearing USYC (Treasury bills) that compounds in their Vault over time.
 
-This model is economically impossible on traditional Ethereum L1s due to high gas fees ($0.50–$2.00 per transaction). However, by combining the **Arc L1 Blockchain** (which uses USDC natively for gas) with **Circle's Gateway Nanopayments**, we can process thousands of micro-transactions for fractions of a cent.
+**Hackathon Track:** 🛒 Real-Time Micro-Commerce Flow
+
+We are eliminating the "false binary" of $15/month subscriptions by allowing readers to pay dynamic micropayments (e.g., **$0.01 to $0.10 USDC**) per article. Economic activity is triggered and settled per interaction (a single read, a single comment, a single editorial correction). 
+
+The platform takes a fixed **$0.001 toll per read**, and writers receive the rest. This payment is automatically converted into yield-bearing USYC (Treasury bills) that compounds in their Vault over time.
+
+Beyond just reading, we use Nanopayments to unlock two additional Micro-Commerce flows:
+*   **"Proof of Value" Comments (Anti-Spam):** Readers must pay a sub-cent micro-fee to leave a comment, instantly destroying bot spam while creating a secondary revenue stream for authors.
+*   **Micro-Bounties:** Readers who submit typo corrections or editorial feedback are instantly rewarded with a micro-bounty paid directly to their wallet by the author.
+
+This model is economically impossible on traditional Ethereum L1s due to high gas fees. However, by combining the **Arc L1 Blockchain** (which uses USDC natively for gas) with **Circle's Gateway Nanopayments**, we process thousands of micro-transactions for fractions of a cent, preserving the margin for the creator.
 
 ## 2. Technical Stack
 - **Blockchain**: Arc Testnet (Chain ID: `5042002`)

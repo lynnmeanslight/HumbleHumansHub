@@ -54,18 +54,39 @@ function isChainMissingError(error: unknown) {
   return maybeError.code === 4902 || maybeError.data?.originalError?.code === 4902;
 }
 
+function getArcWalletParams() {
+  return {
+    chainId: toHexChainId(arcTestnet.id),
+    chainName: arcTestnet.name,
+    nativeCurrency: arcTestnet.nativeCurrency,
+    rpcUrls: arcTestnet.rpcUrls.default.http,
+    blockExplorerUrls: [arcTestnet.blockExplorers?.default.url].filter(Boolean),
+  };
+}
+
 export async function ensureArcWalletChain() {
   const provider = getEthereumProvider();
   if (!provider) {
     throw new Error("No injected wallet was found. Open this page in MetaMask and try again.");
   }
 
-  const chainId = toHexChainId(arcTestnet.id);
+  const chainParams = getArcWalletParams();
+
+  // Best effort: ask the wallet to upsert the Arc network details so the
+  // configured RPC URL matches NEXT_PUBLIC_ARC_RPC_URL.
+  try {
+    await provider.request({
+      method: "wallet_addEthereumChain",
+      params: [chainParams],
+    });
+  } catch (error) {
+    if (isChainMissingError(error)) throw error;
+  }
 
   try {
     await provider.request({
       method: "wallet_switchEthereumChain",
-      params: [{ chainId }],
+      params: [{ chainId: chainParams.chainId }],
     });
     return;
   } catch (error) {
@@ -74,20 +95,12 @@ export async function ensureArcWalletChain() {
 
   await provider.request({
     method: "wallet_addEthereumChain",
-    params: [
-      {
-        chainId,
-        chainName: arcTestnet.name,
-        nativeCurrency: arcTestnet.nativeCurrency,
-        rpcUrls: arcTestnet.rpcUrls.default.http,
-        blockExplorerUrls: [arcTestnet.blockExplorers?.default.url].filter(Boolean),
-      },
-    ],
+    params: [chainParams],
   });
 
   await provider.request({
     method: "wallet_switchEthereumChain",
-    params: [{ chainId }],
+    params: [{ chainId: chainParams.chainId }],
   });
 }
 

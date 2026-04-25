@@ -3,16 +3,16 @@
 /* eslint-disable */
 import type * as interfaces from "./interfaces";
 export type { interfaces };
-export type { MockTeller } from "./MockTeller";
 export type { ReaderVault } from "./ReaderVault";
 export type { WriterVault } from "./WriterVault";
 export * as factories from "./factories";
-export type { ITeller } from "./interfaces/ITeller";
-export { ITeller__factory } from "./factories/interfaces/ITeller__factory";
+export type { IERC20 } from "./interfaces/ITeller.sol/IERC20";
+export { IERC20__factory } from "./factories/interfaces/ITeller.sol/IERC20__factory";
+export type { ITeller } from "./interfaces/ITeller.sol/ITeller";
+export { ITeller__factory } from "./factories/interfaces/ITeller.sol/ITeller__factory";
 export type { IUSYC } from "./interfaces/IUSYC";
 export { IUSYC__factory } from "./factories/interfaces/IUSYC__factory";
 export type { IWriterVault } from "./interfaces/IWriterVault";
 export { IWriterVault__factory } from "./factories/interfaces/IWriterVault__factory";
-export { MockTeller__factory } from "./factories/MockTeller__factory";
 export { ReaderVault__factory } from "./factories/ReaderVault__factory";
 export { WriterVault__factory } from "./factories/WriterVault__factory";

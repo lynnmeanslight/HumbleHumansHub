@@ -1,0 +1,87 @@
+type ReaderAccount @entity(immutable: false) {
+  id: Bytes!
+  totalDeposited: BigInt!
+  totalWithdrawn: BigInt!
+  totalUsycMinted: BigInt!
+  readCount: BigInt!
+  totalReadVolume: BigInt!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type WriterAccount @entity(immutable: false) {
+  id: Bytes!
+  totalReads: BigInt!
+  totalReceived: BigInt!
+  totalWithdrawn: BigInt!
+  totalUsycMinted: BigInt!
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type ArticleStats @entity(immutable: false) {
+  id: String!
+  slug: String!
+  totalReads: BigInt!
+  totalVolume: BigInt!
+  totalWriterUsycMinted: BigInt!
+  lastReader: Bytes
+  lastWriter: Bytes
+  createdAt: BigInt!
+  updatedAt: BigInt!
+}
+
+type ArticleRead @entity(immutable: true) {
+  id: Bytes!
+  txHash: Bytes!
+  logIndex: BigInt!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  reader: Bytes!
+  writer: Bytes!
+  slug: String!
+  usdcPaid: BigInt!
+}
+
+type ReaderDeposit @entity(immutable: true) {
+  id: Bytes!
+  txHash: Bytes!
+  logIndex: BigInt!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  reader: Bytes!
+  usdcAmount: BigInt!
+  usycMinted: BigInt!
+}
+
+type ReaderWithdrawal @entity(immutable: true) {
+  id: Bytes!
+  txHash: Bytes!
+  logIndex: BigInt!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  reader: Bytes!
+  usdcAmount: BigInt!
+}
+
+type WriterEarning @entity(immutable: true) {
+  id: Bytes!
+  txHash: Bytes!
+  logIndex: BigInt!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  writer: Bytes!
+  slug: String!
+  usdcAmount: BigInt!
+  usycMinted: BigInt!
+}
+
+type WriterWithdrawal @entity(immutable: true) {
+  id: Bytes!
+  txHash: Bytes!
+  logIndex: BigInt!
+  blockNumber: BigInt!
+  timestamp: BigInt!
+  writer: Bytes!
+  usdcAmount: BigInt!
+}

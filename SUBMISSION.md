@@ -33,15 +33,15 @@ Arc changes this fundamentally. USDC-native gas and sub-cent transaction costs m
 ### How It Works
 
 **For Readers:**
-1. Connect wallet, deposit USDC (min $0.10 for ~100 reads)
+1. Connect wallet, deposit USDC (min $0.10)
 2. $0.01 stays as liquid float; rest auto-stakes into USYC
-3. Browse articles — click any article → $0.001 deduced atomically
+3. Browse articles — click any article → dynamic price (e.g. $0.05) deduced atomically
 4. Idle balance earns ~5% APR via USYC between reads
 5. Withdraw anytime (USYC → USDC via Hashnote Teller, T+0)
 
 **For Writers:**
-1. Publish articles with a wallet address
-2. Earn $0.001 USDC per read, instantly settled on Arc
+1. Publish articles with a wallet address and set a dynamic price
+2. Earn price minus $0.001 platform toll, instantly settled on Arc
 3. Earnings auto-stake into USYC (yield-bearing)
 4. Withdraw anytime — compounds automatically until then
 
@@ -51,10 +51,11 @@ Reader deposits USDC
   → ReaderVault keeps $0.01 float
   → Rest → Hashnote Teller → USYC
 
-Reader clicks article
+Reader clicks article (e.g. Price: $0.05)
   → x402 payment check
-  → ReaderVault: redeem $0.001 USYC → USDC (T+0, atomic)
-  → $0.001 USDC → WriterVault
+  → ReaderVault: redeem $0.05 USYC → USDC (T+0, atomic)
+  → $0.001 USDC → Treasury
+  → $0.049 USDC → WriterVault
   → WriterVault: auto-stake → USYC
   → Article unlocks
 ```
@@ -159,6 +160,12 @@ Demo shows:
 - [ ] Add contract addresses to `.env.local`
 - [ ] Run stress test: `npx ts-node scripts/stress-test.ts` (generates 50+ txns)
 - [ ] Verify 50+ transactions on Arc Explorer
+- [ ] Deploy to Vercel: `cd frontend && vercel --prod`
+- [ ] Add env vars to Vercel dashboard
+- [ ] Record 3:30 demo video (follow script above)
+- [ ] Write submission (copy from this doc)
+- [ ] Submit before **April 25, 2026**
+ ] Verify 50+ transactions on Arc Explorer
 - [ ] Deploy to Vercel: `cd frontend && vercel --prod`
 - [ ] Add env vars to Vercel dashboard
 - [ ] Record 3:30 demo video (follow script above)

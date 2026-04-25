@@ -87,7 +87,7 @@ export default function ProfilePage() {
 
           {!isConnected ? (
             <div className="rounded-xl border border-black/[0.08] p-8 text-center">
-              <p className="text-[14px] text-[#6e6e73] mb-4">Connect your wallet to manage your profile.</p>
+              <p className="text-[14px] text-[#6e6e73] mb-4">Connect to manage your profile.</p>
               <Link href="/" className="btn-primary text-[13px] py-2 px-5">Go to home</Link>
             </div>
           ) : loading ? (
@@ -100,7 +100,7 @@ export default function ProfilePage() {
             <form onSubmit={handleSave} className="space-y-5">
               {/* Wallet address (read-only) */}
               <div>
-                <label className="block text-[12px] font-medium text-[#1d1d1f] mb-2">Wallet address</label>
+                <label className="block text-[12px] font-medium text-[#1d1d1f] mb-2">Account address</label>
                 <div className="h-10 px-3.5 rounded-lg border border-black/[0.08] bg-black/[0.02] flex items-center">
                   <span className="text-[13px] text-[#86868b] font-mono truncate">{address}</span>
                 </div>

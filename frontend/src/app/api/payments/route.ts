@@ -70,7 +70,6 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const intentId = searchParams.get("intentId");
-  const slug = searchParams.get("slug");
 
   if (!intentId) {
     return NextResponse.json({ error: "Missing intentId" }, { status: 400 });

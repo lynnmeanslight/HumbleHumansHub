@@ -63,7 +63,8 @@ export default async function ArticlePage({ params }: { params: { slug: string }
 
       <section className="section-elevated">
         <div className="max-w-[680px] mx-auto px-6 py-10 md:py-14">
-          <PaymentGate articleTitle={article.title} authorName={author} slug={slug} writerAddress={writerAddress} />
+          <PaymentGate articleTitle={article.title} authorName={author} price={`$${price}`} slug={slug} writerAddress={writerAddress} />
+          
           <div className="mt-10 h-px bg-black/[0.06]" />
           <div className="mt-4 flex items-center gap-2.5">
             <span className="text-[13px] text-[#1a8917] font-medium">✓ Settled</span>

@@ -42,3 +42,21 @@ model Article {
 
   @@map("articles")
 }
+
+model ArticleReadEvent {
+  id            String   @id
+  txHash        String   @unique @map("tx_hash")
+  logIndex      Int      @map("log_index")
+  blockNumber   BigInt   @map("block_number")
+  reader        String
+  writerAddress String   @map("writer_address")
+  articleSlug   String   @map("article_slug")
+  amount        Decimal  @db.Decimal(20, 18)
+  eventType     String   @default("READ") @map("event_type") // READ, CLAP, COMMENT
+  observedAt    DateTime @map("observed_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([observedAt(sort: Desc)])
+  @@index([articleSlug, observedAt(sort: Desc)])
+  @@map("article_read_events")
+}
