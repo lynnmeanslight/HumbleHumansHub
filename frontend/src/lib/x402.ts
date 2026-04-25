@@ -176,11 +176,12 @@ export async function verifyPayment(
   }
 
   // ── On-chain verification ────────────────────────────────────────────────
-  let receipt: Awaited<ReturnType<typeof arcClient.getTransactionReceipt>>;
+  let receipt: Awaited<ReturnType<typeof arcClient.waitForTransactionReceipt>>;
   try {
-    receipt = await arcClient.getTransactionReceipt({ hash: txHash as Hash });
-  } catch {
-    return { valid: false, error: "Transaction not found on-chain" };
+    receipt = await arcClient.waitForTransactionReceipt({ hash: txHash as Hash });
+  } catch (err) {
+    console.error("[x402] Transaction wait failed:", err);
+    return { valid: false, error: "Transaction not found or timed out" };
   }
 
   if (receipt.status !== "success") {

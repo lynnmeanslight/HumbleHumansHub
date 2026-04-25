@@ -40,9 +40,10 @@ export async function POST(req: NextRequest) {
     // 1. Verify Payment On-Chain
     let receipt;
     try {
-      receipt = await arcClient.getTransactionReceipt({ hash: txHash as Hash });
-    } catch {
-      return NextResponse.json({ error: "Transaction not found" }, { status: 404 });
+      receipt = await arcClient.waitForTransactionReceipt({ hash: txHash as Hash });
+    } catch (err) {
+      console.error("[Agent API] Transaction wait failed:", err);
+      return NextResponse.json({ error: "Transaction not found or timed out" }, { status: 404 });
     }
 
     if (receipt.status !== "success") {
