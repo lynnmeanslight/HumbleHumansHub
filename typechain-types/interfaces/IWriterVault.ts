@@ -3,6 +3,7 @@
 /* eslint-disable */
 import type {
   BaseContract,
+  BigNumberish,
   BytesLike,
   FunctionFragment,
   Result,
@@ -25,7 +26,7 @@ export interface IWriterVaultInterface extends Interface {
 
   encodeFunctionData(
     functionFragment: "receivePayment",
-    values: [AddressLike, string]
+    values: [AddressLike, string, BigNumberish]
   ): string;
 
   decodeFunctionResult(
@@ -78,7 +79,7 @@ export interface IWriterVault extends BaseContract {
   ): Promise<this>;
 
   receivePayment: TypedContractMethod<
-    [writer: AddressLike, slug: string],
+    [writer: AddressLike, slug: string, pType: BigNumberish],
     [void],
     "payable"
   >;
@@ -90,7 +91,7 @@ export interface IWriterVault extends BaseContract {
   getFunction(
     nameOrSignature: "receivePayment"
   ): TypedContractMethod<
-    [writer: AddressLike, slug: string],
+    [writer: AddressLike, slug: string, pType: BigNumberish],
     [void],
     "payable"
   >;

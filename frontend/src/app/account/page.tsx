@@ -159,6 +159,7 @@ function WalletTab() {
     deposit, isDepositing, isDepositSuccess, depositError,
     withdraw, isWithdrawing, isWithdrawSuccess,
     refetchBalance,
+    totalReadsPerformed, totalClapsGiven, totalCommentsGiven,
     isOnArc, switchToArcAsync,
   } = useReaderVault();
 
@@ -279,6 +280,32 @@ function WalletTab() {
         </div>
 
         <div className="lg:col-span-2 space-y-4">
+          {/* Activity summary */}
+          <div className="card overflow-hidden">
+            <div className="px-5 py-3 border-b border-black/[0.06] flex items-center justify-between">
+              <span className="text-label">My Activity</span>
+              <span className="text-[11px] text-[#86868b]">History</span>
+            </div>
+            {isConnected ? (
+              <div className="px-5 py-5 grid grid-cols-3 gap-4">
+                <div className="text-center p-3 rounded-lg bg-[#f5f5f7]">
+                  <div className="text-[20px] font-bold text-[#1d1d1f]">{totalReadsPerformed.toString()}</div>
+                  <div className="text-[11px] text-[#86868b] uppercase tracking-wider font-medium">Reads</div>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-[#f5f5f7]">
+                  <div className="text-[20px] font-bold text-[#1d1d1f]">{totalClapsGiven.toString()}</div>
+                  <div className="text-[11px] text-[#86868b] uppercase tracking-wider font-medium">Claps</div>
+                </div>
+                <div className="text-center p-3 rounded-lg bg-[#f5f5f7]">
+                  <div className="text-[20px] font-bold text-[#1d1d1f]">{totalCommentsGiven.toString()}</div>
+                  <div className="text-[11px] text-[#86868b] uppercase tracking-wider font-medium">Comments</div>
+                </div>
+              </div>
+            ) : (
+              <div className="px-5 py-10 text-center text-[13px] text-[#86868b]">Connect to view your activity</div>
+            )}
+          </div>
+
           <div className="card overflow-hidden">
             <div className="px-5 py-3 border-b border-black/[0.06] flex items-center justify-between">
               <span className="text-label">Balance Breakdown</span>

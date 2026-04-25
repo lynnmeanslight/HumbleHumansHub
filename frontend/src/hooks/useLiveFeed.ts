@@ -88,7 +88,7 @@ export function useLiveFeed() {
     return `${Math.floor(s / 60)}m ago`;
   }
 
-  const totalReads = useMemo(() => events.length, [events]);
+  const totalReads = useMemo(() => events.filter(e => e.eventType === "READ").length, [events]);
   const totalVolume = useMemo(
     () => events.reduce((sum, event) => sum + event.amount, 0),
     [events]

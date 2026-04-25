@@ -8,12 +8,6 @@ import "./interfaces/IWriterVault.sol";
 /**
  * @title ReaderVault
  * @notice Manages reader USDC/USYC balance for micro-payments on HumbleHumansHub.
- *
- * Flow:
- *   1. Reader deposits USDC
- *   2. $0.01 stays as USDC float for instant reads (no redemption latency)
- *   3. Remainder auto-stakes into USYC via Hashnote Teller (yield-bearing)
- *   4. On article read: redeem $0.001 USYC → USDC → WriterVault atomically
  */
 contract ReaderVault {
     // ─── Constants ───────────────────────────────────────────────────────────
@@ -30,6 +24,11 @@ contract ReaderVault {
     mapping(address => uint256) public usdcFloat;
     /// Reader address → USYC staked balance
     mapping(address => uint256) public usycStaked;
+
+    /// Reader activity tracking
+    mapping(address => uint256) public totalReadsPerformed;
+    mapping(address => uint256) public totalClapsGiven;
+    mapping(address => uint256) public totalCommentsGiven;
 
     // ─── Events ───────────────────────────────────────────────────────────────
     event Deposited(address indexed reader, uint256 usdcAmount, uint256 usycMinted);
@@ -82,7 +81,14 @@ contract ReaderVault {
     /**
      * @notice Internal logic to deduct funds and route payment.
      */
-    function _processPayment(address reader, address writer, string calldata slug, uint256 price, uint256 fee) internal {
+    function _processPayment(
+        address reader, 
+        address writer, 
+        string calldata slug, 
+        uint256 price, 
+        uint256 fee, 
+        IWriterVault.PaymentType pType
+    ) internal {
         uint256 writerShare = price - fee;
         uint256 floatBalance = usdcFloat[reader];
 
@@ -94,14 +100,11 @@ contract ReaderVault {
                 (bool success, ) = owner.call{value: fee}("");
                 if (!success) revert TransferFailed();
             }
-            if (writerShare > 0) {
-                IWriterVault(writerVault).receivePayment{value: writerShare}(writer, slug);
-            }
+            // Notify WriterVault even if share is 0 (to track interaction)
+            IWriterVault(writerVault).receivePayment{value: writerShare}(writer, slug, pType);
         } else {
             // Slow path: redeem USYC → USDC
-            uint256 usycNeeded = teller.previewDeposit(price); // approximate shares needed to get 'price' assets back
-            // To be safe, add a tiny buffer to avoid rounding issues, or just use convertToShares
-            usycNeeded = teller.convertToShares(price); 
+            uint256 usycNeeded = teller.convertToShares(price); 
             if (usycStaked[reader] < usycNeeded) revert InsufficientBalance();
 
             usycStaked[reader] -= usycNeeded;
@@ -113,9 +116,8 @@ contract ReaderVault {
                 (bool success, ) = owner.call{value: fee}("");
                 if (!success) revert TransferFailed();
             }
-            if (writerShare > 0) {
-                IWriterVault(writerVault).receivePayment{value: writerShare}(writer, slug);
-            }
+            // Notify WriterVault even if share is 0 (to track interaction)
+            IWriterVault(writerVault).receivePayment{value: writerShare}(writer, slug, pType);
 
             // Refund any excess back to float
             if (usdcOut > price) {
@@ -133,7 +135,8 @@ contract ReaderVault {
      */
     function payForRead(address reader, address writer, string calldata slug, uint256 price) external {
         require(price >= PLATFORM_FEE, "Price must be at least platform fee");
-        _processPayment(reader, writer, slug, price, PLATFORM_FEE);
+        _processPayment(reader, writer, slug, price, PLATFORM_FEE, IWriterVault.PaymentType.Read);
+        totalReadsPerformed[reader] += 1;
         emit ArticleRead(reader, writer, slug, price);
     }
 
@@ -147,7 +150,8 @@ contract ReaderVault {
      */
     function payForComment(address reader, address writer, string calldata slug, uint256 price, string calldata commentHash) external {
         require(price > 0, "Comment price must be > 0");
-        _processPayment(reader, writer, slug, price, 0); // No platform fee for comments
+        _processPayment(reader, writer, slug, price, 0, IWriterVault.PaymentType.Comment);
+        totalCommentsGiven[reader] += 1;
         emit CommentPaid(reader, writer, slug, price, commentHash);
     }
 
@@ -159,7 +163,8 @@ contract ReaderVault {
      */
     function payForClap(address reader, address writer, string calldata slug) external {
         uint256 clapPrice = 1_000_000_000_000_000; // $0.001 USDC
-        _processPayment(reader, writer, slug, clapPrice, 0); // No platform fee
+        _processPayment(reader, writer, slug, clapPrice, 0, IWriterVault.PaymentType.Clap);
+        totalClapsGiven[reader] += 1;
         emit ClapPaid(reader, writer, slug, clapPrice);
     }
 
@@ -197,6 +202,16 @@ contract ReaderVault {
         usdcBalance      = usdcFloat[reader];
         usycBalance      = usycStaked[reader];
         estimatedUsdcValue = usdcBalance + teller.convertToAssets(usycBalance);
+    }
+
+    function activityOf(address reader) external view returns (
+        uint256 reads,
+        uint256 claps,
+        uint256 comments
+    ) {
+        reads = totalReadsPerformed[reader];
+        claps = totalClapsGiven[reader];
+        comments = totalCommentsGiven[reader];
     }
 
     receive() external payable {}

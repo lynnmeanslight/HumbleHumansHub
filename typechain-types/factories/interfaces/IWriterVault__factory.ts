@@ -21,6 +21,11 @@ const _abi = [
         name: "slug",
         type: "string",
       },
+      {
+        internalType: "enum IWriterVault.PaymentType",
+        name: "pType",
+        type: "uint8",
+      },
     ],
     name: "receivePayment",
     outputs: [],

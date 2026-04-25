@@ -28,6 +28,7 @@ export interface ReaderVaultInterface extends Interface {
     nameOrSignature:
       | "FLOAT_AMOUNT"
       | "PLATFORM_FEE"
+      | "activityOf"
       | "balanceOf"
       | "deposit"
       | "owner"
@@ -35,6 +36,9 @@ export interface ReaderVaultInterface extends Interface {
       | "payForComment"
       | "payForRead"
       | "teller"
+      | "totalClapsGiven"
+      | "totalCommentsGiven"
+      | "totalReadsPerformed"
       | "usdcFloat"
       | "usycStaked"
       | "usycToken"
@@ -60,6 +64,10 @@ export interface ReaderVaultInterface extends Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
+    functionFragment: "activityOf",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
     functionFragment: "balanceOf",
     values: [AddressLike]
   ): string;
@@ -78,6 +86,18 @@ export interface ReaderVaultInterface extends Interface {
     values: [AddressLike, AddressLike, string, BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "teller", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "totalClapsGiven",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "totalCommentsGiven",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "totalReadsPerformed",
+    values: [AddressLike]
+  ): string;
   encodeFunctionData(
     functionFragment: "usdcFloat",
     values: [AddressLike]
@@ -101,6 +121,7 @@ export interface ReaderVaultInterface extends Interface {
     functionFragment: "PLATFORM_FEE",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "activityOf", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "balanceOf", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "deposit", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
@@ -111,6 +132,18 @@ export interface ReaderVaultInterface extends Interface {
   ): Result;
   decodeFunctionResult(functionFragment: "payForRead", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "teller", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "totalClapsGiven",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "totalCommentsGiven",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "totalReadsPerformed",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "usdcFloat", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "usycStaked", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "usycToken", data: BytesLike): Result;
@@ -281,6 +314,18 @@ export interface ReaderVault extends BaseContract {
 
   PLATFORM_FEE: TypedContractMethod<[], [bigint], "view">;
 
+  activityOf: TypedContractMethod<
+    [reader: AddressLike],
+    [
+      [bigint, bigint, bigint] & {
+        reads: bigint;
+        claps: bigint;
+        comments: bigint;
+      }
+    ],
+    "view"
+  >;
+
   balanceOf: TypedContractMethod<
     [reader: AddressLike],
     [
@@ -328,6 +373,20 @@ export interface ReaderVault extends BaseContract {
 
   teller: TypedContractMethod<[], [string], "view">;
 
+  totalClapsGiven: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+
+  totalCommentsGiven: TypedContractMethod<
+    [arg0: AddressLike],
+    [bigint],
+    "view"
+  >;
+
+  totalReadsPerformed: TypedContractMethod<
+    [arg0: AddressLike],
+    [bigint],
+    "view"
+  >;
+
   usdcFloat: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
 
   usycStaked: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
@@ -348,6 +407,19 @@ export interface ReaderVault extends BaseContract {
   getFunction(
     nameOrSignature: "PLATFORM_FEE"
   ): TypedContractMethod<[], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "activityOf"
+  ): TypedContractMethod<
+    [reader: AddressLike],
+    [
+      [bigint, bigint, bigint] & {
+        reads: bigint;
+        claps: bigint;
+        comments: bigint;
+      }
+    ],
+    "view"
+  >;
   getFunction(
     nameOrSignature: "balanceOf"
   ): TypedContractMethod<
@@ -402,6 +474,15 @@ export interface ReaderVault extends BaseContract {
   getFunction(
     nameOrSignature: "teller"
   ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "totalClapsGiven"
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "totalCommentsGiven"
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "totalReadsPerformed"
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
   getFunction(
     nameOrSignature: "usdcFloat"
   ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;

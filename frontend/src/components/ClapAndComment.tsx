@@ -7,7 +7,7 @@ import { useReaderVault } from "@/hooks/useReaderVault";
 
 export function ClapAndComment({ writerAddress, slug }: { writerAddress: `0x${string}`; slug: string }) {
   const { isConnected } = useAccount();
-  const { payForClap, isClapSubmitting, payForComment, isCommentSubmitting } = useReaderVault();
+  const { payForClap, isClapSubmitting, payForComment, isCommentSubmitting, refetchActivity } = useReaderVault();
   
   const [claps, setClaps] = useState(0);
   const [commentText, setCommentText] = useState("");
@@ -23,6 +23,7 @@ export function ClapAndComment({ writerAddress, slug }: { writerAddress: `0x${st
     try {
       await payForClap(writerAddress, slug);
       setClaps(c => c + 1);
+      if (refetchActivity) refetchActivity();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Clap failed");
     }
@@ -49,6 +50,7 @@ export function ClapAndComment({ writerAddress, slug }: { writerAddress: `0x${st
       
       setComments([...comments, { text: commentText, sender: "You" }]);
       setCommentText("");
+      if (refetchActivity) refetchActivity();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Comment failed");
     }

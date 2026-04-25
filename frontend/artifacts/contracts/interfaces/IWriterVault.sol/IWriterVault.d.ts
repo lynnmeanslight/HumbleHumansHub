@@ -23,6 +23,11 @@ export interface IWriterVault$Type {
           "internalType": "string",
           "name": "slug",
           "type": "string"
+        },
+        {
+          "internalType": "enum IWriterVault.PaymentType",
+          "name": "pType",
+          "type": "uint8"
         }
       ],
       "name": "receivePayment",

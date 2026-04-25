@@ -47,6 +47,7 @@ export function PaymentGate({ articleTitle, authorName, price = "$0.001", slug, 
     payError,
     isOnArc,
     switchToArc,
+    refetchActivity,
   } = useReaderVault();
 
   const numericPriceStr = price.replace(/[^0-9.]/g, "");
@@ -63,6 +64,9 @@ export function PaymentGate({ articleTitle, authorName, price = "$0.001", slug, 
   useEffect(() => {
     if (!isPaySuccess || !paymentInitiated.current) return;
     paymentInitiated.current = false;
+    
+    // Refresh reader activity counts
+    if (refetchActivity) refetchActivity();
 
     async function fetchContent() {
       const paymentHeader = JSON.stringify({
@@ -172,7 +176,7 @@ export function PaymentGate({ articleTitle, authorName, price = "$0.001", slug, 
           <div className="text-center max-w-sm mx-auto px-6">
             <div className="mx-auto w-12 h-12 rounded-full bg-[#0071e3]/10 flex items-center justify-center mb-4">
               <svg className="w-5 h-5 text-[#0071e3]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 002.25 2.25z" />
               </svg>
             </div>
             <p className="text-[12px] font-semibold text-[#0071e3] uppercase tracking-widest mb-3">Premium Article</p>

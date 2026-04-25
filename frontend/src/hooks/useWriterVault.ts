@@ -19,6 +19,8 @@ const WRITER_VAULT_ABI = [
       { name: "usyc", type: "uint256" },
       { name: "estimatedUsdc", type: "uint256" },
       { name: "reads", type: "uint256" },
+      { name: "claps", type: "uint256" },
+      { name: "comments", type: "uint256" },
       { name: "lifetimeUsdc", type: "uint256" },
     ],
     stateMutability: "view",
@@ -58,7 +60,9 @@ export function useWriterVault() {
   const usycBalance = earnings?.[0] ?? BigInt(0);
   const estimatedUsdc = earnings?.[1] ?? BigInt(0);
   const totalReads = earnings?.[2] ?? BigInt(0);
-  const lifetimeUsdc = earnings?.[3] ?? BigInt(0);
+  const totalClaps = earnings?.[3] ?? BigInt(0);
+  const totalComments = earnings?.[4] ?? BigInt(0);
+  const lifetimeUsdc = earnings?.[5] ?? BigInt(0);
 
   // ─── Withdraw ──────────────────────────────────────────────────────────────
   const { writeContractAsync: writeWithdraw, data: withdrawTxHash, isPending: isWithdrawing } = useWriteContract();
@@ -84,6 +88,8 @@ export function useWriterVault() {
     usycBalance,
     estimatedUsdc,
     totalReads,
+    totalClaps,
+    totalComments,
     lifetimeUsdc,
     refetchEarnings,
 

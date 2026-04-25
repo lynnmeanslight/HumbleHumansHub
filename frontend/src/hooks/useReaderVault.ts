@@ -69,6 +69,17 @@ const READER_VAULT_ABI = [
     stateMutability: "view",
   },
   {
+    name: "activityOf",
+    type: "function",
+    inputs: [{ name: "reader", type: "address" }],
+    outputs: [
+      { name: "reads", type: "uint256" },
+      { name: "claps", type: "uint256" },
+      { name: "comments", type: "uint256" },
+    ],
+    stateMutability: "view",
+  },
+  {
     name: "usdcFloat",
     type: "function",
     inputs: [{ name: "", type: "address" }],
@@ -138,6 +149,23 @@ export function useReaderVault() {
   const usycStaked = balance?.[1] ?? BigInt(0);
   const totalUsdcValue = balance?.[2] ?? BigInt(0);
 
+  // ─── Read activity ─────────────────────────────────────────────────────────
+  const { data: activity, refetch: refetchActivity } = useReadContract(
+    vaultAddress && address
+      ? {
+          address: vaultAddress,
+          abi: READER_VAULT_ABI,
+          functionName: "activityOf",
+          args: [address],
+          chainId: arcTestnet.id,
+        }
+      : undefined
+  );
+
+  const totalReadsPerformed = activity?.[0] ?? BigInt(0);
+  const totalClapsGiven = activity?.[1] ?? BigInt(0);
+  const totalCommentsGiven = activity?.[2] ?? BigInt(0);
+
   // ─── Deposit ───────────────────────────────────────────────────────────────
   const { writeContractAsync: writeDeposit, data: depositTxHash, isPending: isDepositing, error: depositWriteError } = useWriteContract();
   const { isLoading: isDepositConfirming, isSuccess: isDepositSuccess, error: depositReceiptError } = useWaitForTransactionReceipt({
@@ -146,7 +174,6 @@ export function useReaderVault() {
   });
 
   async function deposit(amount: bigint) {
-    console.log(address);
     if (!vaultAddress) throw new Error("ReaderVault address not configured");
     if (!address) throw new Error("Wallet not connected");
     if (!isOnArc) await switchToArcAsync();
@@ -280,6 +307,12 @@ export function useReaderVault() {
     usycStaked,
     totalUsdcValue,
     refetchBalance,
+
+    // Activity
+    totalReadsPerformed,
+    totalClapsGiven,
+    totalCommentsGiven,
+    refetchActivity,
 
     // Actions
     deposit,

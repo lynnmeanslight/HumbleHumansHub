@@ -30,6 +30,8 @@ export interface WriterVaultInterface extends Interface {
       | "owner"
       | "receivePayment"
       | "teller"
+      | "totalClaps"
+      | "totalComments"
       | "totalReads"
       | "totalUsdcEarned"
       | "usycBalance"
@@ -48,9 +50,17 @@ export interface WriterVaultInterface extends Interface {
   encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "receivePayment",
-    values: [AddressLike, string]
+    values: [AddressLike, string, BigNumberish]
   ): string;
   encodeFunctionData(functionFragment: "teller", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "totalClaps",
+    values: [AddressLike]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "totalComments",
+    values: [AddressLike]
+  ): string;
   encodeFunctionData(
     functionFragment: "totalReads",
     values: [AddressLike]
@@ -73,6 +83,11 @@ export interface WriterVaultInterface extends Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "teller", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "totalClaps", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "totalComments",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "totalReads", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "totalUsdcEarned",
@@ -91,19 +106,22 @@ export namespace EarningsReceivedEvent {
     writer: AddressLike,
     usdcAmount: BigNumberish,
     usycMinted: BigNumberish,
-    slug: string
+    slug: string,
+    pType: BigNumberish
   ];
   export type OutputTuple = [
     writer: string,
     usdcAmount: bigint,
     usycMinted: bigint,
-    slug: string
+    slug: string,
+    pType: bigint
   ];
   export interface OutputObject {
     writer: string;
     usdcAmount: bigint;
     usycMinted: bigint;
     slug: string;
+    pType: bigint;
   }
   export type Event = TypedContractEvent<InputTuple, OutputTuple, OutputObject>;
   export type Filter = TypedDeferredTopicFilter<Event>;
@@ -170,10 +188,12 @@ export interface WriterVault extends BaseContract {
   earningsOf: TypedContractMethod<
     [writer: AddressLike],
     [
-      [bigint, bigint, bigint, bigint] & {
+      [bigint, bigint, bigint, bigint, bigint, bigint] & {
         usyc: bigint;
         estimatedUsdc: bigint;
         reads: bigint;
+        claps: bigint;
+        comments: bigint;
         lifetimeUsdc: bigint;
       }
     ],
@@ -183,12 +203,16 @@ export interface WriterVault extends BaseContract {
   owner: TypedContractMethod<[], [string], "view">;
 
   receivePayment: TypedContractMethod<
-    [writer: AddressLike, slug: string],
+    [writer: AddressLike, slug: string, pType: BigNumberish],
     [void],
     "payable"
   >;
 
   teller: TypedContractMethod<[], [string], "view">;
+
+  totalClaps: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+
+  totalComments: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
 
   totalReads: TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
 
@@ -209,10 +233,12 @@ export interface WriterVault extends BaseContract {
   ): TypedContractMethod<
     [writer: AddressLike],
     [
-      [bigint, bigint, bigint, bigint] & {
+      [bigint, bigint, bigint, bigint, bigint, bigint] & {
         usyc: bigint;
         estimatedUsdc: bigint;
         reads: bigint;
+        claps: bigint;
+        comments: bigint;
         lifetimeUsdc: bigint;
       }
     ],
@@ -224,13 +250,19 @@ export interface WriterVault extends BaseContract {
   getFunction(
     nameOrSignature: "receivePayment"
   ): TypedContractMethod<
-    [writer: AddressLike, slug: string],
+    [writer: AddressLike, slug: string, pType: BigNumberish],
     [void],
     "payable"
   >;
   getFunction(
     nameOrSignature: "teller"
   ): TypedContractMethod<[], [string], "view">;
+  getFunction(
+    nameOrSignature: "totalClaps"
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
+  getFunction(
+    nameOrSignature: "totalComments"
+  ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
   getFunction(
     nameOrSignature: "totalReads"
   ): TypedContractMethod<[arg0: AddressLike], [bigint], "view">;
@@ -263,7 +295,7 @@ export interface WriterVault extends BaseContract {
   >;
 
   filters: {
-    "EarningsReceived(address,uint256,uint256,string)": TypedContractEvent<
+    "EarningsReceived(address,uint256,uint256,string,uint8)": TypedContractEvent<
       EarningsReceivedEvent.InputTuple,
       EarningsReceivedEvent.OutputTuple,
       EarningsReceivedEvent.OutputObject
