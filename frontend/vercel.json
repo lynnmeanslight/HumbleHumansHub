@@ -4,18 +4,5 @@
   "installCommand": "npm install",
   "framework": "nextjs",
   "outputDirectory": ".next",
-  "regions": ["sin1"],
-  "env": [
-    "NEXT_PUBLIC_ARC_RPC_URL",
-    "NEXT_PUBLIC_ARC_CHAIN_ID",
-    "NEXT_PUBLIC_READER_VAULT_ADDRESS",
-    "NEXT_PUBLIC_WRITER_VAULT_ADDRESS",
-    "NEXT_PUBLIC_USYC_TELLER_ADDRESS",
-    "NEXT_PUBLIC_USYC_TOKEN_ADDRESS",
-    "NEXT_PUBLIC_USDC_ADDRESS",
-    "CIRCLE_API_KEY",
-    "CIRCLE_ENTITY_SECRET",
-    "NEXT_PUBLIC_CIRCLE_APP_ID",
-    "NEXT_PUBLIC_APP_URL"
-  ]
+  "regions": ["sin1"]
 }
